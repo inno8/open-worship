@@ -56,33 +56,58 @@ const menuItems: { id: View; label: string; icon: React.ReactNode }[] = [
 
 export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
   return (
-    <aside className="flex flex-col border-r border-[#0f3460]" style={{ width: 240, minWidth: 240, backgroundColor: '#16213e' }}>
+    <aside 
+      className="flex flex-col h-full"
+      style={{ 
+        width: 260, 
+        minWidth: 260, 
+        backgroundColor: '#16213e',
+        borderRight: '1px solid rgba(255,255,255,0.08)'
+      }}
+    >
       {/* Logo */}
-      <div className="p-6 border-b border-[#0f3460]">
+      <div className="px-6 py-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <h1 className="text-xl font-bold text-white flex items-center gap-3">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#e94560" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="12" y1="2" x2="12" y2="22" />
-            <line x1="4" y1="8" x2="20" y2="8" />
-          </svg>
-          Open Worship
+          <div 
+            className="w-10 h-10 rounded-xl flex items-center justify-center"
+            style={{ backgroundColor: 'rgba(233,69,96,0.15)' }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e94560" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="2" x2="12" y2="22" />
+              <line x1="4" y1="8" x2="20" y2="8" />
+            </svg>
+          </div>
+          <span>Open Worship</span>
         </h1>
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 p-4">
-        <ul className="space-y-1">
+      <nav className="flex-1 px-4 py-6">
+        <ul className="space-y-2">
           {menuItems.map((item) => (
             <li key={item.id}>
               <button
                 onClick={() => onViewChange(item.id)}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-left transition-colors ${
-                  currentView === item.id
-                    ? 'bg-[#e94560] text-white'
-                    : 'text-[#a0aec0] hover:bg-[#0f3460] hover:text-white'
-                }`}
+                className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left transition-all"
+                style={{
+                  backgroundColor: currentView === item.id ? '#e94560' : 'transparent',
+                  color: currentView === item.id ? '#ffffff' : '#a0aec0',
+                }}
+                onMouseEnter={(e) => {
+                  if (currentView !== item.id) {
+                    e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.05)'
+                    e.currentTarget.style.color = '#ffffff'
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (currentView !== item.id) {
+                    e.currentTarget.style.backgroundColor = 'transparent'
+                    e.currentTarget.style.color = '#a0aec0'
+                  }
+                }}
               >
                 {item.icon}
-                <span className="font-medium">{item.label}</span>
+                <span className="font-semibold text-[15px]">{item.label}</span>
               </button>
             </li>
           ))}
@@ -90,8 +115,8 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-[#0f3460]">
-        <p className="text-xs text-[#a0aec0]/60 text-center">v1.0.0</p>
+      <div className="px-6 py-5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <p className="text-xs text-[#a0aec0]/50 text-center font-medium">v1.0.0</p>
       </div>
     </aside>
   )
