@@ -97,10 +97,31 @@ export default function Library() {
   }
 
   async function handleAddToSchedule() {
-    if (!selectedSong || !activeSchedule) return
-    await addItem(activeSchedule.id, {
+    if (!selectedSong) return
+    
+    // Ensure we have an active schedule
+    let schedule = activeSchedule
+    if (!schedule) {
+      // Create a new schedule if none exists
+      const now = new Date().toISOString()
+      const newSchedule = {
+        id: crypto.randomUUID(),
+        name: 'Sunday Service',
+        date: new Date().toISOString().split('T')[0],
+        notes: '',
+        items: [],
+        createdAt: now,
+        updatedAt: now,
+      }
+      const { addSchedule, setActiveSchedule } = useScheduleStore.getState()
+      await addSchedule(newSchedule)
+      setActiveSchedule(newSchedule)
+      schedule = newSchedule
+    }
+    
+    await addItem(schedule.id, {
       id: crypto.randomUUID(),
-      order: activeSchedule.items.length,
+      order: schedule.items.length,
       type: 'song',
       song: selectedSong,
     })
@@ -117,342 +138,395 @@ export default function Library() {
     setShowAddModal(true)
   }
 
-  // Empty state
-  if (songs.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center h-full" style={{ backgroundColor: '#1a1a2e' }}>
-        <div className="text-center">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full flex items-center justify-center" style={{ backgroundColor: '#e94560', opacity: 0.15 }}>
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#e94560" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 18V5l12-2v13" />
-              <circle cx="6" cy="18" r="3" />
-              <circle cx="18" cy="16" r="3" />
+  // Empty state content (rendered within main layout)
+  const emptyStateContent = songs.length === 0 ? (
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1a2e' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ 
+          width: '80px', 
+          height: '80px', 
+          margin: '0 auto 24px', 
+          borderRadius: '50%', 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          backgroundColor: 'rgba(233,69,96,0.15)' 
+        }}>
+          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#e94560" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 18V5l12-2v13" />
+            <circle cx="6" cy="18" r="3" />
+            <circle cx="18" cy="16" r="3" />
+          </svg>
+        </div>
+        <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#ffffff', marginBottom: '8px' }}>No Songs Yet</h2>
+        <p style={{ color: '#a0aec0', marginBottom: '32px' }}>Add your first worship song to get started</p>
+        <div style={{ display: 'flex', gap: '16px', justifyContent: 'center' }}>
+          <button
+            onClick={openAddModal}
+            style={{
+              padding: '16px 28px',
+              borderRadius: '12px',
+              backgroundColor: '#e94560',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '15px',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+          >
+            + Add Song
+          </button>
+          <button 
+            style={{
+              padding: '16px 28px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255,255,255,0.2)',
+              backgroundColor: 'transparent',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '15px',
+              cursor: 'pointer',
+            }}
+          >
+            Import from File
+          </button>
+        </div>
+      </div>
+    </div>
+  ) : null
+
+  // Shared styles for modal inputs
+  const modalInputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '16px 20px',
+    borderRadius: '14px',
+    backgroundColor: '#1a1a2e',
+    color: '#ffffff',
+    border: '1px solid rgba(255,255,255,0.1)',
+    fontSize: '15px',
+    outline: 'none',
+  }
+
+  const modalLabelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: '14px',
+    fontWeight: 600,
+    color: '#a0aec0',
+    marginBottom: '12px',
+  }
+
+  // Modal content rendered inline to prevent re-creation
+  const addSongModalContent = showAddModal ? (
+    <div 
+      style={{ 
+        position: 'fixed', 
+        inset: 0, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        zIndex: 50,
+        backgroundColor: 'rgba(0,0,0,0.75)' 
+      }} 
+      onClick={() => setShowAddModal(false)}
+    >
+      <div 
+        style={{ 
+          borderRadius: '20px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          width: '640px',
+          maxHeight: '85vh',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#16213e',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          padding: '28px 32px',
+          borderBottom: '1px solid rgba(255,255,255,0.1)',
+        }}>
+          <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: 0 }}>{isEditing ? 'Edit Song' : 'Add New Song'}</h3>
+          <button 
+            onClick={() => setShowAddModal(false)} 
+            style={{ 
+              background: 'none',
+              border: 'none',
+              color: '#a0aec0',
+              cursor: 'pointer',
+              padding: '10px',
+              borderRadius: '10px',
+            }}
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
+          </button>
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div>
+            <label style={modalLabelStyle}>Title</label>
+            <input
+              type="text"
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
+              placeholder="Song title"
+              style={modalInputStyle}
+            />
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">No Songs Yet</h2>
-          <p className="text-[#a0aec0] mb-8">Add your first worship song to get started</p>
-          <div className="flex gap-4 justify-center">
-            <button
-              onClick={openAddModal}
-              className="px-6 py-3 rounded-lg text-white font-semibold transition-all hover:opacity-90"
-              style={{ backgroundColor: '#e94560' }}
-            >
-              + Add Song
-            </button>
-            <button 
-              className="px-6 py-3 rounded-lg border text-white font-semibold transition-all hover:bg-white/5"
-              style={{ borderColor: 'rgba(255,255,255,0.2)' }}
-            >
+          <div>
+            <label style={modalLabelStyle}>Author</label>
+            <input
+              type="text"
+              value={newAuthor}
+              onChange={(e) => setNewAuthor(e.target.value)}
+              placeholder="Author/Artist"
+              style={modalInputStyle}
+            />
+          </div>
+          <div>
+            <label style={modalLabelStyle}>Lyrics</label>
+            <textarea
+              value={newLyrics}
+              onChange={(e) => setNewLyrics(e.target.value)}
+              placeholder="[Verse 1]&#10;Enter lyrics with section markers..."
+              rows={10}
+              style={{ 
+                ...modalInputStyle, 
+                fontFamily: 'monospace', 
+                fontSize: '14px',
+                resize: 'none',
+                lineHeight: 1.6,
+              }}
+            />
+          </div>
+          <div>
+            <label style={modalLabelStyle}>Tags</label>
+            <input
+              type="text"
+              value={newTags}
+              onChange={(e) => setNewTags(e.target.value)}
+              placeholder="worship, hymn, contemporary (comma-separated)"
+              style={modalInputStyle}
+            />
+          </div>
+
+          <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
+            <button style={{ 
+              padding: '14px 20px', 
+              borderRadius: '12px', 
+              border: '1px solid rgba(255,255,255,0.1)',
+              backgroundColor: 'transparent',
+              color: '#a0aec0',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Import from File
             </button>
+            <button style={{ 
+              padding: '14px 20px', 
+              borderRadius: '12px', 
+              border: '1px solid rgba(255,255,255,0.1)',
+              backgroundColor: 'transparent',
+              color: '#a0aec0',
+              fontSize: '14px',
+              fontWeight: 500,
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+            }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+              Import from Google Drive
+            </button>
           </div>
         </div>
 
-        {/* Add Modal */}
-        {showAddModal && <AddSongModal />}
+        {/* Footer */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'flex-end', 
+          gap: '12px', 
+          padding: '24px 32px',
+          borderTop: '1px solid rgba(255,255,255,0.1)',
+        }}>
+          <button
+            onClick={() => setShowAddModal(false)}
+            style={{
+              padding: '16px 28px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255,255,255,0.2)',
+              backgroundColor: 'transparent',
+              color: '#ffffff',
+              fontSize: '15px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSaveNew}
+            style={{
+              padding: '16px 28px',
+              borderRadius: '12px',
+              border: 'none',
+              backgroundColor: '#e94560',
+              color: '#ffffff',
+              fontSize: '15px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            {isEditing ? 'Update Song' : 'Save Song'}
+          </button>
+        </div>
       </div>
-    )
-  }
+    </div>
+  ) : null
 
-  function AddSongModal() {
-    const inputStyle: React.CSSProperties = {
-      width: '100%',
-      padding: '16px 20px',
-      borderRadius: '14px',
-      backgroundColor: '#1a1a2e',
-      color: '#ffffff',
-      border: '1px solid rgba(255,255,255,0.1)',
-      fontSize: '15px',
-      outline: 'none',
-    }
-
-    const labelStyle: React.CSSProperties = {
-      display: 'block',
-      fontSize: '14px',
-      fontWeight: 600,
-      color: '#a0aec0',
-      marginBottom: '12px',
-    }
-
-    return (
+  // Delete dialog content rendered inline
+  const deleteDialogContent = showDeleteDialog ? (
+    <div 
+      style={{ 
+        position: 'fixed', 
+        inset: 0, 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'center', 
+        zIndex: 50,
+        backgroundColor: 'rgba(0,0,0,0.75)' 
+      }} 
+      onClick={() => setShowDeleteDialog(false)}
+    >
       <div 
         style={{ 
-          position: 'fixed', 
-          inset: 0, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          zIndex: 50,
-          backgroundColor: 'rgba(0,0,0,0.75)' 
-        }} 
-        onClick={() => setShowAddModal(false)}
+          borderRadius: '20px',
+          border: '1px solid rgba(255,255,255,0.1)',
+          width: '440px',
+          backgroundColor: '#16213e',
+          boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+        }}
+        onClick={(e) => e.stopPropagation()}
       >
-        <div 
-          style={{ 
-            borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.1)',
-            width: '640px',
-            maxHeight: '85vh',
-            display: 'flex',
-            flexDirection: 'column',
-            backgroundColor: '#16213e',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Header */}
+        <div style={{ padding: '40px 36px 32px', textAlign: 'center' }}>
+          {/* Warning icon */}
           <div style={{ 
+            width: '72px', 
+            height: '72px', 
+            borderRadius: '50%', 
             display: 'flex', 
             alignItems: 'center', 
-            justifyContent: 'space-between', 
-            padding: '28px 32px',
-            borderBottom: '1px solid rgba(255,255,255,0.1)',
+            justifyContent: 'center',
+            margin: '0 auto 24px',
+            backgroundColor: 'rgba(239,68,68,0.15)',
           }}>
-            <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: 0 }}>{isEditing ? 'Edit Song' : 'Add New Song'}</h3>
-            <button 
-              onClick={() => setShowAddModal(false)} 
-              style={{ 
-                background: 'none',
-                border: 'none',
-                color: '#a0aec0',
-                cursor: 'pointer',
-                padding: '10px',
-                borderRadius: '10px',
-              }}
-            >
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="18" y1="6" x2="6" y2="18" />
-                <line x1="6" y1="6" x2="18" y2="18" />
-              </svg>
-            </button>
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+              <line x1="12" y1="9" x2="12" y2="13" />
+              <line x1="12" y1="17" x2="12.01" y2="17" />
+            </svg>
           </div>
-
-          {/* Body */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
-            <div>
-              <label style={labelStyle}>Title</label>
-              <input
-                type="text"
-                value={newTitle}
-                onChange={(e) => setNewTitle(e.target.value)}
-                placeholder="Song title"
-                style={inputStyle}
-                onFocus={(e) => e.target.style.borderColor = '#e94560'}
-                onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-                autoFocus
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Author</label>
-              <input
-                type="text"
-                value={newAuthor}
-                onChange={(e) => setNewAuthor(e.target.value)}
-                placeholder="Author/Artist"
-                style={inputStyle}
-                onFocus={(e) => e.target.style.borderColor = '#e94560'}
-                onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Lyrics</label>
-              <textarea
-                value={newLyrics}
-                onChange={(e) => setNewLyrics(e.target.value)}
-                placeholder="[Verse 1]&#10;Enter lyrics with section markers..."
-                rows={10}
-                style={{ 
-                  ...inputStyle, 
-                  fontFamily: 'monospace', 
-                  fontSize: '14px',
-                  resize: 'none',
-                  lineHeight: 1.6,
-                }}
-                onFocus={(e) => e.target.style.borderColor = '#e94560'}
-                onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-              />
-            </div>
-            <div>
-              <label style={labelStyle}>Tags</label>
-              <input
-                type="text"
-                value={newTags}
-                onChange={(e) => setNewTags(e.target.value)}
-                placeholder="worship, hymn, contemporary (comma-separated)"
-                style={inputStyle}
-                onFocus={(e) => e.target.style.borderColor = '#e94560'}
-                onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
-              />
-            </div>
-
-            <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
-              <button style={{ 
-                padding: '14px 20px', 
-                borderRadius: '12px', 
-                border: '1px solid rgba(255,255,255,0.1)',
-                backgroundColor: 'transparent',
-                color: '#a0aec0',
-                fontSize: '14px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                Import from File
-              </button>
-              <button style={{ 
-                padding: '14px 20px', 
-                borderRadius: '12px', 
-                border: '1px solid rgba(255,255,255,0.1)',
-                backgroundColor: 'transparent',
-                color: '#a0aec0',
-                fontSize: '14px',
-                fontWeight: 500,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px',
-              }}>
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
-                Import from Google Drive
-              </button>
-            </div>
-          </div>
-
-          {/* Footer */}
-          <div style={{ 
-            display: 'flex', 
-            justifyContent: 'flex-end', 
-            gap: '12px', 
-            padding: '24px 32px',
-            borderTop: '1px solid rgba(255,255,255,0.1)',
-          }}>
-            <button
-              onClick={() => setShowAddModal(false)}
-              style={{
-                padding: '16px 28px',
-                borderRadius: '12px',
-                border: '1px solid rgba(255,255,255,0.2)',
-                backgroundColor: 'transparent',
-                color: '#ffffff',
-                fontSize: '15px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSaveNew}
-              style={{
-                padding: '16px 28px',
-                borderRadius: '12px',
-                border: 'none',
-                backgroundColor: '#e94560',
-                color: '#ffffff',
-                fontSize: '15px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              {isEditing ? 'Update Song' : 'Save Song'}
-            </button>
-          </div>
+          <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: '0 0 16px' }}>Delete Song?</h3>
+          <p style={{ fontSize: '15px', color: '#a0aec0', lineHeight: 1.6, margin: 0 }}>
+            Are you sure you want to delete <span style={{ color: '#ffffff', fontWeight: 600 }}>"{selectedSong?.title}"</span>? This action cannot be undone.
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: '12px', padding: '0 32px 32px' }}>
+          <button
+            onClick={() => setShowDeleteDialog(false)}
+            style={{
+              flex: 1,
+              padding: '16px',
+              borderRadius: '12px',
+              border: '1px solid rgba(255,255,255,0.2)',
+              backgroundColor: 'transparent',
+              color: '#ffffff',
+              fontSize: '15px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleDelete}
+            style={{
+              flex: 1,
+              padding: '16px',
+              borderRadius: '12px',
+              border: 'none',
+              backgroundColor: '#ef4444',
+              color: '#ffffff',
+              fontSize: '15px',
+              fontWeight: 600,
+              cursor: 'pointer',
+            }}
+          >
+            Delete
+          </button>
         </div>
       </div>
-    )
-  }
+    </div>
+  ) : null
 
-  function DeleteDialog() {
+  // No longer using nested function components - they are now inline JSX above
+  // This prevents focus loss issues caused by React re-creating the function on each render
+
+  // If no songs, show empty state with modals still available
+  if (songs.length === 0) {
     return (
-      <div 
-        style={{ 
-          position: 'fixed', 
-          inset: 0, 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          zIndex: 50,
-          backgroundColor: 'rgba(0,0,0,0.75)' 
-        }} 
-        onClick={() => setShowDeleteDialog(false)}
-      >
-        <div 
-          style={{ 
-            borderRadius: '20px',
-            border: '1px solid rgba(255,255,255,0.1)',
-            width: '440px',
-            backgroundColor: '#16213e',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
-          }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div style={{ padding: '40px 36px 32px', textAlign: 'center' }}>
-            {/* Warning icon */}
+      <div style={{ display: 'flex', height: '100%', backgroundColor: '#1a1a2e' }}>
+        {emptyStateContent}
+        {addSongModalContent}
+        {deleteDialogContent}
+        {toast && (
+          <div style={{ position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)', zIndex: 50 }}>
             <div style={{ 
-              width: '72px', 
-              height: '72px', 
-              borderRadius: '50%', 
               display: 'flex', 
               alignItems: 'center', 
-              justifyContent: 'center',
-              margin: '0 auto 24px',
-              backgroundColor: 'rgba(239,68,68,0.15)',
+              gap: '12px', 
+              padding: '16px 24px', 
+              borderRadius: '12px', 
+              border: '1px solid rgba(255,255,255,0.1)',
+              backgroundColor: '#16213e', 
+              boxShadow: '0 10px 25px rgba(0,0,0,0.3)' 
             }}>
-              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
-                <line x1="12" y1="9" x2="12" y2="13" />
-                <line x1="12" y1="17" x2="12.01" y2="17" />
-              </svg>
+              <div style={{ 
+                width: '24px', 
+                height: '24px', 
+                borderRadius: '50%', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                backgroundColor: 'rgba(34,197,94,0.2)' 
+              }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </div>
+              <span style={{ color: '#ffffff', fontWeight: 500 }}>{toast}</span>
             </div>
-            <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: '0 0 16px' }}>Delete Song?</h3>
-            <p style={{ fontSize: '15px', color: '#a0aec0', lineHeight: 1.6, margin: 0 }}>
-              Are you sure you want to delete <span style={{ color: '#ffffff', fontWeight: 600 }}>"{selectedSong?.title}"</span>? This action cannot be undone.
-            </p>
           </div>
-          <div style={{ display: 'flex', gap: '12px', padding: '0 32px 32px' }}>
-            <button
-              onClick={() => setShowDeleteDialog(false)}
-              style={{
-                flex: 1,
-                padding: '16px',
-                borderRadius: '12px',
-                border: '1px solid rgba(255,255,255,0.2)',
-                backgroundColor: 'transparent',
-                color: '#ffffff',
-                fontSize: '15px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleDelete}
-              style={{
-                flex: 1,
-                padding: '16px',
-                borderRadius: '12px',
-                border: 'none',
-                backgroundColor: '#ef4444',
-                color: '#ffffff',
-                fontSize: '15px',
-                fontWeight: 600,
-                cursor: 'pointer',
-              }}
-            >
-              Delete
-            </button>
-          </div>
-        </div>
+        )}
       </div>
     )
   }
 
   return (
-    <div className="flex h-full" style={{ backgroundColor: '#1a1a2e' }}>
+    <div style={{ display: 'flex', height: '100%', backgroundColor: '#1a1a2e' }}>
       {/* Song list */}
       <div
         style={{ 
@@ -716,24 +790,38 @@ export default function Library() {
       </div>
 
       {/* Add Song Modal */}
-      {showAddModal && <AddSongModal />}
+      {addSongModalContent}
 
       {/* Delete Dialog */}
-      {showDeleteDialog && <DeleteDialog />}
+      {deleteDialogContent}
 
       {/* Success Toast */}
       {toast && (
-        <div className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 animate-[slideUp_0.3s_ease-out]">
-          <div 
-            className="flex items-center gap-3 px-6 py-4 rounded-xl border shadow-2xl"
-            style={{ backgroundColor: '#16213e', borderColor: 'rgba(255,255,255,0.1)' }}
-          >
-            <div className="w-6 h-6 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(34,197,94,0.2)' }}>
+        <div style={{ position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)', zIndex: 50 }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px', 
+            padding: '16px 24px', 
+            borderRadius: '12px', 
+            border: '1px solid rgba(255,255,255,0.1)',
+            backgroundColor: '#16213e', 
+            boxShadow: '0 10px 25px rgba(0,0,0,0.3)' 
+          }}>
+            <div style={{ 
+              width: '24px', 
+              height: '24px', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              backgroundColor: 'rgba(34,197,94,0.2)' 
+            }}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12" />
               </svg>
             </div>
-            <span className="text-white font-medium">{toast}</span>
+            <span style={{ color: '#ffffff', fontWeight: 500 }}>{toast}</span>
           </div>
         </div>
       )}

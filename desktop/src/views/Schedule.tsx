@@ -5,7 +5,9 @@ import { useSongStore } from '../stores/songStore'
 export default function Schedule() {
   const {
     activeSchedule,
+    schedules,
     setActiveSchedule,
+    addSchedule,
     addItem,
     removeItem,
     reorderItems,
@@ -17,19 +19,30 @@ export default function Schedule() {
   const [scheduleName, setScheduleName] = useState('')
 
   useEffect(() => {
+    // If no active schedule, check if we have any schedules in the store
+    // If not, create a new one
     if (!activeSchedule) {
-      const now = new Date().toISOString()
-      setActiveSchedule({
-        id: crypto.randomUUID(),
-        name: 'Sunday Service',
-        date: new Date().toISOString().split('T')[0],
-        notes: '',
-        items: [],
-        createdAt: now,
-        updatedAt: now,
-      })
+      if (schedules.length > 0) {
+        // Use the first existing schedule
+        setActiveSchedule(schedules[0])
+      } else {
+        // Create a new schedule
+        const now = new Date().toISOString()
+        const newSchedule = {
+          id: crypto.randomUUID(),
+          name: 'Sunday Service',
+          date: new Date().toISOString().split('T')[0],
+          notes: '',
+          items: [],
+          createdAt: now,
+          updatedAt: now,
+        }
+        // Add to store AND set as active
+        addSchedule(newSchedule)
+        setActiveSchedule(newSchedule)
+      }
     }
-  }, [])
+  }, [activeSchedule, schedules, setActiveSchedule, addSchedule])
 
   useEffect(() => {
     if (activeSchedule) {
@@ -37,7 +50,7 @@ export default function Schedule() {
     }
   }, [activeSchedule?.name])
 
-  function handleAddSong(songId: string) {
+  async function handleAddSong(songId: string) {
     if (!activeSchedule) return
     const song = songs.find((s) => s.id === songId)
     if (!song) return
@@ -48,10 +61,10 @@ export default function Schedule() {
       type: 'song',
       song,
     }
-    addItem(activeSchedule.id, item)
+    await addItem(activeSchedule.id, item)
   }
 
-  function handleAddBlank() {
+  async function handleAddBlank() {
     if (!activeSchedule) return
     const item: ScheduleItem = {
       id: crypto.randomUUID(),
@@ -59,10 +72,10 @@ export default function Schedule() {
       type: 'blank',
       customTitle: 'Blank Slide',
     }
-    addItem(activeSchedule.id, item)
+    await addItem(activeSchedule.id, item)
   }
 
-  function handleAddCustom() {
+  async function handleAddCustom() {
     if (!activeSchedule) return
     const item: ScheduleItem = {
       id: crypto.randomUUID(),
@@ -71,15 +84,15 @@ export default function Schedule() {
       customTitle: 'Custom Text',
       customText: '',
     }
-    addItem(activeSchedule.id, item)
+    await addItem(activeSchedule.id, item)
   }
 
-  function handleRemove(itemId: string) {
+  async function handleRemove(itemId: string) {
     if (!activeSchedule) return
-    removeItem(activeSchedule.id, itemId)
+    await removeItem(activeSchedule.id, itemId)
   }
 
-  function handleMove(index: number, direction: 'up' | 'down') {
+  async function handleMove(index: number, direction: 'up' | 'down') {
     if (!activeSchedule) return
     const items = [...activeSchedule.items]
     const target = direction === 'up' ? index - 1 : index + 1
@@ -87,13 +100,13 @@ export default function Schedule() {
 
     const ids = items.map((i) => i.id)
     ;[ids[index], ids[target]] = [ids[target], ids[index]]
-    reorderItems(activeSchedule.id, ids)
+    await reorderItems(activeSchedule.id, ids)
   }
 
-  function handleSaveName() {
+  async function handleSaveName() {
     if (activeSchedule && scheduleName.trim()) {
       const { updateSchedule } = useScheduleStore.getState()
-      updateSchedule(activeSchedule.id, { name: scheduleName.trim() })
+      await updateSchedule(activeSchedule.id, { name: scheduleName.trim() })
     }
     setEditingName(false)
   }
