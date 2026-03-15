@@ -11,12 +11,19 @@ export default function Schedule() {
     addItem,
     removeItem,
     reorderItems,
+    updateItem,
   } = useScheduleStore()
   const { songs } = useSongStore()
   const [pickerSearch, setPickerSearch] = useState('')
   const [pickerFilter, setPickerFilter] = useState<'recent' | 'favorites' | 'all'>('all')
   const [editingName, setEditingName] = useState(false)
   const [scheduleName, setScheduleName] = useState('')
+  
+  // Custom text editor state
+  const [showCustomEditor, setShowCustomEditor] = useState(false)
+  const [customTitle, setCustomTitle] = useState('')
+  const [customText, setCustomText] = useState('')
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
 
   useEffect(() => {
     // If no active schedule, check if we have any schedules in the store
@@ -75,16 +82,48 @@ export default function Schedule() {
     await addItem(activeSchedule.id, item)
   }
 
-  async function handleAddCustom() {
-    if (!activeSchedule) return
-    const item: ScheduleItem = {
-      id: crypto.randomUUID(),
-      order: activeSchedule.items.length,
-      type: 'custom',
-      customTitle: 'Custom Text',
-      customText: '',
+  function openCustomEditor(item?: ScheduleItem) {
+    if (item && item.type === 'custom') {
+      setEditingItemId(item.id)
+      setCustomTitle(item.customTitle || '')
+      setCustomText(item.customText || '')
+    } else {
+      setEditingItemId(null)
+      setCustomTitle('')
+      setCustomText('')
     }
-    await addItem(activeSchedule.id, item)
+    setShowCustomEditor(true)
+  }
+
+  async function handleSaveCustom() {
+    if (!activeSchedule) return
+    
+    if (editingItemId) {
+      // Update existing item
+      await updateItem(activeSchedule.id, editingItemId, {
+        customTitle: customTitle.trim() || 'Custom Text',
+        customText: customText,
+      })
+    } else {
+      // Create new item
+      const item: ScheduleItem = {
+        id: crypto.randomUUID(),
+        order: activeSchedule.items.length,
+        type: 'custom',
+        customTitle: customTitle.trim() || 'Custom Text',
+        customText: customText,
+      }
+      await addItem(activeSchedule.id, item)
+    }
+    
+    setShowCustomEditor(false)
+    setEditingItemId(null)
+    setCustomTitle('')
+    setCustomText('')
+  }
+
+  function handleAddCustom() {
+    openCustomEditor()
   }
 
   async function handleRemove(itemId: string) {
@@ -301,8 +340,27 @@ export default function Schedule() {
                   )}
                 </div>
 
-                {/* Reorder and remove */}
+                {/* Actions: edit (custom only), reorder, remove */}
                 <div style={{ display: 'flex', gap: '4px' }}>
+                  {item.type === 'custom' && (
+                    <button
+                      onClick={() => openCustomEditor(item)}
+                      title="Edit custom text"
+                      style={{ 
+                        padding: '6px', 
+                        borderRadius: '6px', 
+                        background: 'none',
+                        border: 'none',
+                        color: '#e94560',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     onClick={() => handleMove(index, 'up')}
                     disabled={index === 0}
@@ -545,6 +603,155 @@ export default function Schedule() {
           </div>
         </div>
       </div>
+
+      {/* Custom Text Editor Modal */}
+      {showCustomEditor && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 50,
+            backgroundColor: 'rgba(0,0,0,0.75)' 
+          }} 
+          onClick={() => setShowCustomEditor(false)}
+        >
+          <div 
+            style={{ 
+              borderRadius: '20px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              width: '600px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: '#16213e',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              padding: '24px 28px',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', margin: 0 }}>
+                {editingItemId ? 'Edit Custom Text' : 'Add Custom Text'}
+              </h3>
+              <button 
+                onClick={() => setShowCustomEditor(false)} 
+                style={{ 
+                  background: 'none',
+                  border: 'none',
+                  color: '#a0aec0',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  borderRadius: '8px',
+                }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div style={{ flex: 1, overflowY: 'auto', padding: '28px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#a0aec0', marginBottom: '10px' }}>
+                  Title
+                </label>
+                <input
+                  type="text"
+                  value={customTitle}
+                  onChange={(e) => setCustomTitle(e.target.value)}
+                  placeholder="e.g., Scripture Reading, Announcements..."
+                  style={{
+                    width: '100%',
+                    padding: '14px 18px',
+                    borderRadius: '12px',
+                    backgroundColor: '#1a1a2e',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    fontSize: '15px',
+                    outline: 'none',
+                  }}
+                  autoFocus
+                />
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 600, color: '#a0aec0', marginBottom: '10px' }}>
+                  Text Content
+                </label>
+                <textarea
+                  value={customText}
+                  onChange={(e) => setCustomText(e.target.value)}
+                  placeholder="Enter the text to display on screen...&#10;&#10;For scripture: John 3:16 - For God so loved the world...&#10;For announcements: Next week's events..."
+                  rows={8}
+                  style={{
+                    width: '100%',
+                    padding: '14px 18px',
+                    borderRadius: '12px',
+                    backgroundColor: '#1a1a2e',
+                    color: '#ffffff',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    fontSize: '15px',
+                    fontFamily: 'inherit',
+                    lineHeight: 1.6,
+                    resize: 'vertical',
+                    outline: 'none',
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'flex-end', 
+              gap: '12px', 
+              padding: '20px 28px',
+              borderTop: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              <button
+                onClick={() => setShowCustomEditor(false)}
+                style={{
+                  padding: '14px 24px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  backgroundColor: 'transparent',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveCustom}
+                style={{
+                  padding: '14px 24px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: '#e94560',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {editingItemId ? 'Update' : 'Add to Schedule'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

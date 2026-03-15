@@ -41,6 +41,7 @@ interface ScheduleState {
   
   // Schedule items
   addItem: (scheduleId: string, item: ScheduleItem) => Promise<void>
+  updateItem: (scheduleId: string, itemId: string, updates: Partial<ScheduleItem>) => Promise<void>
   removeItem: (scheduleId: string, itemId: string) => Promise<void>
   reorderItems: (scheduleId: string, itemIds: string[]) => Promise<void>
   
@@ -169,6 +170,37 @@ export const useScheduleStore = create<ScheduleState>((set, get) => ({
     } catch (error) {
       console.error('Failed to add item:', error)
       set({ error: 'Failed to add item' })
+    }
+  },
+
+  updateItem: async (scheduleId, itemId, updates) => {
+    try {
+      if (window.electronAPI?.scheduleItems) {
+        await window.electronAPI.scheduleItems.update(itemId, updates)
+      }
+      set((state) => ({
+        schedules: state.schedules.map((s) =>
+          s.id === scheduleId
+            ? { 
+                ...s, 
+                items: s.items.map((i) => 
+                  i.id === itemId ? { ...i, ...updates } : i
+                ) 
+              }
+            : s
+        ),
+        activeSchedule: state.activeSchedule?.id === scheduleId
+          ? { 
+              ...state.activeSchedule, 
+              items: state.activeSchedule.items.map((i) => 
+                i.id === itemId ? { ...i, ...updates } : i
+              ) 
+            }
+          : state.activeSchedule,
+      }))
+    } catch (error) {
+      console.error('Failed to update item:', error)
+      set({ error: 'Failed to update item' })
     }
   },
 
