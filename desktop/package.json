@@ -30,6 +30,7 @@
     "cross-env": "^7.0.3",
     "electron": "^36.3.0",
     "electron-builder": "^26.0.6",
+    "electron-rebuild": "^3.2.9",
     "postcss": "^8.5.8",
     "typescript": "^5.8.3",
     "vite": "^6.3.4",
