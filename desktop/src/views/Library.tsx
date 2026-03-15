@@ -329,12 +329,18 @@ export default function Library() {
     <div className="flex h-full" style={{ backgroundColor: '#1a1a2e' }}>
       {/* Song list */}
       <div
-        className="flex flex-col border-r"
-        style={{ width: 340, minWidth: 340, backgroundColor: '#16213e', borderColor: 'rgba(255,255,255,0.08)' }}
+        style={{ 
+          width: 360, 
+          minWidth: 360, 
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#16213e', 
+          borderRight: '1px solid rgba(255,255,255,0.08)' 
+        }}
       >
-        <div className="p-4">
-          <div className="relative">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute left-4 top-1/2 -translate-y-1/2">
+        <div style={{ padding: '24px' }}>
+          <div style={{ position: 'relative' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ position: 'absolute', left: '18px', top: '50%', transform: 'translateY(-50%)' }}>
               <circle cx="11" cy="11" r="8" />
               <line x1="21" y1="21" x2="16.65" y2="16.65" />
             </svg>
@@ -343,24 +349,37 @@ export default function Library() {
               placeholder="Search songs..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-xl text-white placeholder-[#a0aec0]/50 border focus:outline-none transition-colors"
-              style={{ backgroundColor: '#1a1a2e', borderColor: 'rgba(255,255,255,0.1)' }}
+              style={{
+                width: '100%',
+                padding: '16px 18px 16px 52px',
+                borderRadius: '14px',
+                backgroundColor: '#1a1a2e',
+                color: '#ffffff',
+                border: '1px solid rgba(255,255,255,0.1)',
+                fontSize: '14px',
+                outline: 'none',
+              }}
               onFocus={(e) => e.target.style.borderColor = '#e94560'}
               onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
             />
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2">
+        <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filteredSongs.map((song) => (
             <button
               key={song.id}
               onClick={() => selectSong(song)}
-              className="w-full text-left p-4 rounded-xl transition-all border"
               style={{
+                width: '100%',
+                textAlign: 'left',
+                padding: '20px',
+                borderRadius: '14px',
+                border: 'none',
+                borderLeft: selectedSong?.id === song.id ? '4px solid #e94560' : '4px solid transparent',
                 backgroundColor: selectedSong?.id === song.id ? '#1a1a2e' : 'transparent',
-                borderColor: selectedSong?.id === song.id ? '#e94560' : 'transparent',
-                borderLeftWidth: selectedSong?.id === song.id ? '3px' : '1px',
+                cursor: 'pointer',
+                transition: 'all 0.2s',
               }}
               onMouseEnter={(e) => {
                 if (selectedSong?.id !== song.id) {
@@ -373,19 +392,25 @@ export default function Library() {
                 }
               }}
             >
-              <div className="font-semibold text-white text-[15px] mb-1">
+              <div style={{ fontWeight: 600, color: '#ffffff', fontSize: '15px', marginBottom: '6px' }}>
                 {song.title}
               </div>
-              <div className="text-sm text-[#a0aec0] mb-2">
+              <div style={{ fontSize: '14px', color: '#a0aec0', marginBottom: '12px' }}>
                 {song.author}
               </div>
               {song.tags.length > 0 && (
-                <div className="flex gap-1.5 flex-wrap">
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   {song.tags.map((tag) => (
                     <span
                       key={tag}
-                      className="text-[11px] px-2.5 py-1 rounded-full font-medium"
-                      style={{ backgroundColor: 'rgba(233,69,96,0.15)', color: '#e94560' }}
+                      style={{ 
+                        fontSize: '11px', 
+                        padding: '6px 12px', 
+                        borderRadius: '20px', 
+                        fontWeight: 500,
+                        backgroundColor: 'rgba(233,69,96,0.15)', 
+                        color: '#e94560' 
+                      }}
                     >
                       {tag}
                     </span>
@@ -396,11 +421,20 @@ export default function Library() {
           ))}
         </div>
 
-        <div className="p-4 border-t" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+        <div style={{ padding: '20px 24px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
           <button
             onClick={openAddModal}
-            className="w-full py-3 rounded-xl text-white font-semibold transition-all hover:opacity-90"
-            style={{ backgroundColor: '#e94560' }}
+            style={{
+              width: '100%',
+              padding: '16px',
+              borderRadius: '14px',
+              backgroundColor: '#e94560',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '14px',
+              border: 'none',
+              cursor: 'pointer',
+            }}
           >
             + Add Song
           </button>
@@ -408,25 +442,31 @@ export default function Library() {
       </div>
 
       {/* Song detail */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         {selectedSong ? (
           <>
-            <div className="px-8 py-6 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
-              <div className="flex items-start justify-between">
+            <div style={{ padding: '32px 40px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
                 <div>
-                  <h2 className="text-3xl font-bold text-white mb-1">
+                  <h2 style={{ fontSize: '32px', fontWeight: 700, color: '#ffffff', margin: '0 0 8px' }}>
                     {selectedSong.title}
                   </h2>
-                  <p className="text-[#a0aec0] text-lg">
+                  <p style={{ fontSize: '18px', color: '#a0aec0', margin: 0 }}>
                     {selectedSong.author}
                   </p>
                   {selectedSong.tags.length > 0 && (
-                    <div className="flex gap-2 mt-4 flex-wrap">
+                    <div style={{ display: 'flex', gap: '10px', marginTop: '20px', flexWrap: 'wrap' }}>
                       {selectedSong.tags.map((tag) => (
                         <span
                           key={tag}
-                          className="text-sm px-4 py-1.5 rounded-full font-medium"
-                          style={{ backgroundColor: '#0f3460', color: '#a0aec0' }}
+                          style={{ 
+                            fontSize: '13px', 
+                            padding: '8px 18px', 
+                            borderRadius: '20px', 
+                            fontWeight: 500,
+                            backgroundColor: '#0f3460', 
+                            color: '#a0aec0' 
+                          }}
                         >
                           {tag}
                         </span>
@@ -434,25 +474,49 @@ export default function Library() {
                     </div>
                   )}
                 </div>
-                <div className="flex gap-3 ml-6 shrink-0">
+                <div style={{ display: 'flex', gap: '12px', marginLeft: '32px', flexShrink: 0 }}>
                   <button
                     onClick={() => startEdit(selectedSong)}
-                    className="px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-80"
-                    style={{ backgroundColor: '#0f3460' }}
+                    style={{
+                      padding: '14px 24px',
+                      borderRadius: '12px',
+                      backgroundColor: '#0f3460',
+                      color: '#ffffff',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => setShowDeleteDialog(true)}
-                    className="px-5 py-2.5 rounded-xl text-sm font-semibold transition-all hover:opacity-80"
-                    style={{ backgroundColor: 'rgba(239,68,68,0.15)', color: '#ef4444' }}
+                    style={{
+                      padding: '14px 24px',
+                      borderRadius: '12px',
+                      backgroundColor: 'rgba(239,68,68,0.15)',
+                      color: '#ef4444',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
                   >
                     Delete
                   </button>
                   <button
                     onClick={handleAddToSchedule}
-                    className="px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90"
-                    style={{ backgroundColor: '#e94560' }}
+                    style={{
+                      padding: '14px 24px',
+                      borderRadius: '12px',
+                      backgroundColor: '#e94560',
+                      color: '#ffffff',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      border: 'none',
+                      cursor: 'pointer',
+                    }}
                   >
                     Add to Schedule
                   </button>
@@ -460,21 +524,36 @@ export default function Library() {
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-8 py-6">
-              <div className="space-y-8">
+            <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '36px' }}>
                 {sections.map((section, idx) => (
                   <div key={idx}>
                     <div 
-                      className="text-xs font-bold uppercase tracking-widest mb-3 px-3 py-1.5 rounded-lg inline-block"
-                      style={{ backgroundColor: 'rgba(233,69,96,0.1)', color: '#e94560' }}
+                      style={{ 
+                        fontSize: '11px', 
+                        fontWeight: 700, 
+                        textTransform: 'uppercase', 
+                        letterSpacing: '0.1em',
+                        marginBottom: '16px', 
+                        padding: '8px 16px', 
+                        borderRadius: '8px', 
+                        display: 'inline-block',
+                        backgroundColor: 'rgba(233,69,96,0.1)', 
+                        color: '#e94560' 
+                      }}
                     >
                       {section.type}
                     </div>
-                    <div className="space-y-1">
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {section.lines.map((line, lineIdx) => (
                         <p
                           key={lineIdx}
-                          className="text-white/90 text-lg leading-relaxed"
+                          style={{ 
+                            color: 'rgba(255,255,255,0.9)', 
+                            fontSize: '18px', 
+                            lineHeight: 1.7,
+                            margin: 0,
+                          }}
                         >
                           {line}
                         </p>
@@ -486,16 +565,25 @@ export default function Library() {
             </div>
           </>
         ) : (
-          <div className="flex-1 flex items-center justify-center">
-            <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full flex items-center justify-center" style={{ backgroundColor: 'rgba(160,174,192,0.1)' }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="opacity-50">
+          <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ 
+                width: '80px', 
+                height: '80px', 
+                margin: '0 auto 20px', 
+                borderRadius: '20px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                backgroundColor: 'rgba(160,174,192,0.1)' 
+              }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
                   <path d="M9 18V5l12-2v13" />
                   <circle cx="6" cy="18" r="3" />
                   <circle cx="18" cy="16" r="3" />
                 </svg>
               </div>
-              <p className="text-[#a0aec0] text-lg">Select a song to view details</p>
+              <p style={{ color: '#a0aec0', fontSize: '18px', margin: 0 }}>Select a song to view details</p>
             </div>
           </div>
         )}
