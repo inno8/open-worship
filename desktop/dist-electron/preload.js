@@ -15,5 +15,28 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   // Remove listener
   removeSlideUpdateListener: () => {
     electron.ipcRenderer.removeAllListeners("slide-update");
+  },
+  // ============ SONGS ============
+  songs: {
+    getAll: () => electron.ipcRenderer.invoke("songs:getAll"),
+    getById: (id) => electron.ipcRenderer.invoke("songs:getById", id),
+    create: (song) => electron.ipcRenderer.invoke("songs:create", song),
+    update: (id, updates) => electron.ipcRenderer.invoke("songs:update", id, updates),
+    delete: (id) => electron.ipcRenderer.invoke("songs:delete", id)
+  },
+  // ============ SCHEDULES ============
+  schedules: {
+    getAll: () => electron.ipcRenderer.invoke("schedules:getAll"),
+    getById: (id) => electron.ipcRenderer.invoke("schedules:getById", id),
+    create: (schedule) => electron.ipcRenderer.invoke("schedules:create", schedule),
+    update: (id, updates) => electron.ipcRenderer.invoke("schedules:update", id, updates),
+    delete: (id) => electron.ipcRenderer.invoke("schedules:delete", id)
+  },
+  // ============ SCHEDULE ITEMS ============
+  scheduleItems: {
+    add: (item) => electron.ipcRenderer.invoke("scheduleItems:add", item),
+    update: (id, updates) => electron.ipcRenderer.invoke("scheduleItems:update", id, updates),
+    delete: (id) => electron.ipcRenderer.invoke("scheduleItems:delete", id),
+    reorder: (scheduleId, itemIds) => electron.ipcRenderer.invoke("scheduleItems:reorder", scheduleId, itemIds)
   }
 });

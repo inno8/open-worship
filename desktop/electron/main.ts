@@ -1,5 +1,6 @@
 import { app, BrowserWindow, screen, ipcMain } from 'electron'
 import path from 'path'
+import * as db from './database'
 
 // Keep a global reference of windows
 let mainWindow: BrowserWindow | null = null
@@ -82,9 +83,8 @@ function createPresentationWindow(displayId?: number) {
   return presentationWindow
 }
 
-// IPC Handlers
+// ============ DISPLAY IPC HANDLERS ============
 
-// Get available displays
 ipcMain.handle('get-displays', () => {
   const displays = screen.getAllDisplays()
   const primary = screen.getPrimaryDisplay()
@@ -92,13 +92,11 @@ ipcMain.handle('get-displays', () => {
   return displays.map(display => ({
     id: display.id,
     label: display.label || `Display ${display.id}`,
-    width: display.bounds.width,
-    height: display.bounds.height,
+    size: { width: display.bounds.width, height: display.bounds.height },
     isPrimary: display.id === primary.id,
   }))
 })
 
-// Open presentation on specific display
 ipcMain.handle('open-presentation', (_event, displayId?: number) => {
   if (presentationWindow) {
     presentationWindow.focus()
@@ -109,7 +107,6 @@ ipcMain.handle('open-presentation', (_event, displayId?: number) => {
   return { success: true, alreadyOpen: false }
 })
 
-// Close presentation window
 ipcMain.handle('close-presentation', () => {
   if (presentationWindow) {
     presentationWindow.close()
@@ -118,8 +115,7 @@ ipcMain.handle('close-presentation', () => {
   return { success: false, reason: 'No presentation window open' }
 })
 
-// Send slide data to presentation window
-ipcMain.handle('update-presentation', (_event, slideData: any) => {
+ipcMain.handle('update-presentation', (_event, slideData: unknown) => {
   if (presentationWindow) {
     presentationWindow.webContents.send('slide-update', slideData)
     return { success: true }
@@ -127,15 +123,130 @@ ipcMain.handle('update-presentation', (_event, slideData: any) => {
   return { success: false, reason: 'No presentation window open' }
 })
 
-// Check if presentation is open
 ipcMain.handle('is-presentation-open', () => {
   return presentationWindow !== null
 })
 
-// App lifecycle
-app.whenReady().then(createMainWindow)
+// ============ SONG IPC HANDLERS ============
+
+ipcMain.handle('songs:getAll', () => {
+  const songs = db.getAllSongs()
+  // Parse tags JSON for each song
+  return songs.map(song => ({
+    ...song,
+    tags: JSON.parse(song.tags || '[]'),
+  }))
+})
+
+ipcMain.handle('songs:getById', (_event, id: string) => {
+  const song = db.getSongById(id)
+  if (song) {
+    return { ...song, tags: JSON.parse(song.tags || '[]') }
+  }
+  return null
+})
+
+ipcMain.handle('songs:create', (_event, song: { id: string; title: string; author: string; lyrics: string; tags: string[]; createdAt: string; updatedAt: string }) => {
+  const dbSong = { ...song, tags: JSON.stringify(song.tags) }
+  const created = db.createSong(dbSong)
+  return { ...created, tags: song.tags }
+})
+
+ipcMain.handle('songs:update', (_event, id: string, updates: { title?: string; author?: string; lyrics?: string; tags?: string[] }) => {
+  const dbUpdates: Record<string, unknown> = { ...updates }
+  if (updates.tags) {
+    dbUpdates.tags = JSON.stringify(updates.tags)
+  }
+  const updated = db.updateSong(id, dbUpdates as Partial<db.Song>)
+  if (updated) {
+    return { ...updated, tags: JSON.parse(updated.tags || '[]') }
+  }
+  return null
+})
+
+ipcMain.handle('songs:delete', (_event, id: string) => {
+  return db.deleteSong(id)
+})
+
+// ============ SCHEDULE IPC HANDLERS ============
+
+ipcMain.handle('schedules:getAll', () => {
+  const schedules = db.getAllSchedules()
+  return schedules.map(schedule => ({
+    ...schedule,
+    items: db.getScheduleItems(schedule.id).map(item => {
+      if (item.songId) {
+        const song = db.getSongById(item.songId)
+        return {
+          ...item,
+          song: song ? { ...song, tags: JSON.parse(song.tags || '[]') } : null,
+        }
+      }
+      return item
+    }),
+  }))
+})
+
+ipcMain.handle('schedules:getById', (_event, id: string) => {
+  const schedule = db.getScheduleById(id)
+  if (schedule) {
+    const items = db.getScheduleItems(id).map(item => {
+      if (item.songId) {
+        const song = db.getSongById(item.songId)
+        return {
+          ...item,
+          song: song ? { ...song, tags: JSON.parse(song.tags || '[]') } : null,
+        }
+      }
+      return item
+    })
+    return { ...schedule, items }
+  }
+  return null
+})
+
+ipcMain.handle('schedules:create', (_event, schedule: { id: string; name: string; date: string; notes: string; createdAt: string; updatedAt: string }) => {
+  return db.createSchedule(schedule)
+})
+
+ipcMain.handle('schedules:update', (_event, id: string, updates: Partial<db.Schedule>) => {
+  return db.updateSchedule(id, updates)
+})
+
+ipcMain.handle('schedules:delete', (_event, id: string) => {
+  return db.deleteSchedule(id)
+})
+
+// ============ SCHEDULE ITEMS IPC HANDLERS ============
+
+ipcMain.handle('scheduleItems:add', (_event, item: db.ScheduleItem) => {
+  return db.addScheduleItem(item)
+})
+
+ipcMain.handle('scheduleItems:update', (_event, id: string, updates: Partial<db.ScheduleItem>) => {
+  return db.updateScheduleItem(id, updates)
+})
+
+ipcMain.handle('scheduleItems:delete', (_event, id: string) => {
+  return db.deleteScheduleItem(id)
+})
+
+ipcMain.handle('scheduleItems:reorder', (_event, scheduleId: string, itemIds: string[]) => {
+  db.reorderScheduleItems(scheduleId, itemIds)
+  return true
+})
+
+// ============ APP LIFECYCLE ============
+
+app.whenReady().then(() => {
+  // Initialize database
+  db.initDatabase()
+  
+  createMainWindow()
+})
 
 app.on('window-all-closed', () => {
+  db.closeDatabase()
   if (process.platform !== 'darwin') {
     app.quit()
   }

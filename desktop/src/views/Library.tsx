@@ -1,46 +1,12 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import { useSongStore, parseLyrics, Song } from '../stores/songStore'
 import { useScheduleStore } from '../stores/scheduleStore'
-
-const MOCK_SONGS: Song[] = [
-  {
-    id: '1',
-    title: 'Amazing Grace',
-    author: 'John Newton',
-    tags: ['hymn', 'classic'],
-    lyrics:
-      '[Verse 1]\nAmazing grace how sweet the sound\nThat saved a wretch like me\nI once was lost but now am found\nWas blind but now I see\n\n[Verse 2]\nTwas grace that taught my heart to fear\nAnd grace my fears relieved\nHow precious did that grace appear\nThe hour I first believed\n\n[Chorus]\nMy chains are gone I\'ve been set free\nMy God my Savior has ransomed me\nAnd like a flood His mercy reigns\nUnending love amazing grace',
-    createdAt: '2024-01-01',
-    updatedAt: '2024-01-01',
-  },
-  {
-    id: '2',
-    title: '10,000 Reasons',
-    author: 'Matt Redman',
-    tags: ['contemporary', 'worship'],
-    lyrics:
-      '[Chorus]\nBless the Lord O my soul\nO my soul worship His holy name\nSing like never before\nO my soul I\'ll worship Your holy name\n\n[Verse 1]\nThe sun comes up it\'s a new day dawning\nIt\'s time to sing Your song again\nWhatever may pass and whatever lies before me\nLet me be singing when the evening comes',
-    createdAt: '2024-01-02',
-    updatedAt: '2024-01-02',
-  },
-  {
-    id: '3',
-    title: 'How Great Is Our God',
-    author: 'Chris Tomlin',
-    tags: ['contemporary', 'praise'],
-    lyrics:
-      '[Verse 1]\nThe splendor of the King\nClothed in majesty\nLet all the earth rejoice\nAll the earth rejoice\n\n[Chorus]\nHow great is our God\nSing with me how great is our God\nAnd all will see how great\nHow great is our God\n\n[Bridge]\nName above all names\nWorthy of all praise\nMy heart will sing\nHow great is our God',
-    createdAt: '2024-01-03',
-    updatedAt: '2024-01-03',
-  },
-]
 
 export default function Library() {
   const {
     songs,
     selectedSong,
     searchQuery,
-    setSongs,
     addSong,
     deleteSong,
     selectSong,
@@ -52,18 +18,14 @@ export default function Library() {
   const [showAddModal, setShowAddModal] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingSongId, setEditingSongId] = useState<string | null>(null)
 
   // Add modal fields
   const [newTitle, setNewTitle] = useState('')
   const [newAuthor, setNewAuthor] = useState('')
   const [newLyrics, setNewLyrics] = useState('')
   const [newTags, setNewTags] = useState('')
-
-  useEffect(() => {
-    if (songs.length === 0) {
-      setSongs(MOCK_SONGS)
-    }
-  }, [])
 
   const showToast = useCallback((message: string) => {
     setToast(message)
@@ -82,6 +44,8 @@ export default function Library() {
   const sections = selectedSong ? parseLyrics(selectedSong.lyrics) : []
 
   function openAddModal() {
+    setIsEditing(false)
+    setEditingSongId(null)
     setNewTitle('')
     setNewAuthor('')
     setNewLyrics('')
@@ -89,37 +53,52 @@ export default function Library() {
     setShowAddModal(true)
   }
 
-  function handleSaveNew() {
+  async function handleSaveNew() {
     if (!newTitle.trim()) return
     const now = new Date().toISOString()
-    const newSong: Song = {
-      id: crypto.randomUUID(),
-      title: newTitle.trim(),
-      author: newAuthor.trim(),
-      lyrics: newLyrics || '[Verse 1]\nEnter lyrics here',
-      tags: newTags
-        .split(',')
-        .map((t) => t.trim())
-        .filter(Boolean),
-      createdAt: now,
-      updatedAt: now,
+    
+    if (isEditing && editingSongId) {
+      // Update existing song
+      const { updateSong } = useSongStore.getState()
+      await updateSong(editingSongId, {
+        title: newTitle.trim(),
+        author: newAuthor.trim(),
+        lyrics: newLyrics || '[Verse 1]\nEnter lyrics here',
+        tags: newTags.split(',').map((t) => t.trim()).filter(Boolean),
+        updatedAt: now,
+      })
+      showToast('Song updated successfully')
+    } else {
+      // Create new song
+      const newSong: Song = {
+        id: crypto.randomUUID(),
+        title: newTitle.trim(),
+        author: newAuthor.trim(),
+        lyrics: newLyrics || '[Verse 1]\nEnter lyrics here',
+        tags: newTags.split(',').map((t) => t.trim()).filter(Boolean),
+        createdAt: now,
+        updatedAt: now,
+      }
+      await addSong(newSong)
+      selectSong(newSong)
+      showToast('Song added successfully')
     }
-    addSong(newSong)
-    selectSong(newSong)
+    
     setShowAddModal(false)
-    showToast('Song added successfully')
+    setIsEditing(false)
+    setEditingSongId(null)
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!selectedSong) return
-    deleteSong(selectedSong.id)
+    await deleteSong(selectedSong.id)
     setShowDeleteDialog(false)
     showToast('Song deleted successfully')
   }
 
-  function handleAddToSchedule() {
+  async function handleAddToSchedule() {
     if (!selectedSong || !activeSchedule) return
-    addItem(activeSchedule.id, {
+    await addItem(activeSchedule.id, {
       id: crypto.randomUUID(),
       order: activeSchedule.items.length,
       type: 'song',
@@ -129,6 +108,8 @@ export default function Library() {
   }
 
   function startEdit(song: Song) {
+    setIsEditing(true)
+    setEditingSongId(song.id)
     setNewTitle(song.title)
     setNewAuthor(song.author)
     setNewLyrics(song.lyrics)
@@ -227,7 +208,7 @@ export default function Library() {
             padding: '28px 32px',
             borderBottom: '1px solid rgba(255,255,255,0.1)',
           }}>
-            <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: 0 }}>Add New Song</h3>
+            <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: 0 }}>{isEditing ? 'Edit Song' : 'Add New Song'}</h3>
             <button 
               onClick={() => setShowAddModal(false)} 
               style={{ 
@@ -376,7 +357,7 @@ export default function Library() {
                 cursor: 'pointer',
               }}
             >
-              Save Song
+              {isEditing ? 'Update Song' : 'Save Song'}
             </button>
           </div>
         </div>

@@ -22,44 +22,94 @@ interface SongState {
   searchQuery: string
   isLoading: boolean
   error: string | null
+  isInitialized: boolean
   
   // Actions
+  loadSongs: () => Promise<void>
   setSongs: (songs: Song[]) => void
-  addSong: (song: Song) => void
-  updateSong: (id: string, updates: Partial<Song>) => void
-  deleteSong: (id: string) => void
+  addSong: (song: Song) => Promise<void>
+  updateSong: (id: string, updates: Partial<Song>) => Promise<void>
+  deleteSong: (id: string) => Promise<void>
   selectSong: (song: Song | null) => void
   setSearchQuery: (query: string) => void
   setLoading: (loading: boolean) => void
   setError: (error: string | null) => void
 }
 
-export const useSongStore = create<SongState>((set) => ({
+export const useSongStore = create<SongState>((set, get) => ({
   songs: [],
   selectedSong: null,
   searchQuery: '',
   isLoading: false,
   error: null,
+  isInitialized: false,
+
+  loadSongs: async () => {
+    if (get().isInitialized) return
+    
+    set({ isLoading: true, error: null })
+    
+    try {
+      if (window.electronAPI?.songs) {
+        const songs = await window.electronAPI.songs.getAll()
+        set({ songs, isInitialized: true, isLoading: false })
+      } else {
+        // Browser mode - no persistence
+        set({ isInitialized: true, isLoading: false })
+      }
+    } catch (error) {
+      console.error('Failed to load songs:', error)
+      set({ error: 'Failed to load songs', isLoading: false, isInitialized: true })
+    }
+  },
 
   setSongs: (songs) => set({ songs }),
   
-  addSong: (song) => set((state) => ({ 
-    songs: [...state.songs, song] 
-  })),
+  addSong: async (song) => {
+    try {
+      if (window.electronAPI?.songs) {
+        await window.electronAPI.songs.create(song)
+      }
+      set((state) => ({ songs: [...state.songs, song] }))
+    } catch (error) {
+      console.error('Failed to add song:', error)
+      set({ error: 'Failed to add song' })
+    }
+  },
   
-  updateSong: (id, updates) => set((state) => ({
-    songs: state.songs.map((song) =>
-      song.id === id ? { ...song, ...updates } : song
-    ),
-    selectedSong: state.selectedSong?.id === id 
-      ? { ...state.selectedSong, ...updates }
-      : state.selectedSong,
-  })),
+  updateSong: async (id, updates) => {
+    try {
+      if (window.electronAPI?.songs) {
+        await window.electronAPI.songs.update(id, updates)
+      }
+      set((state) => ({
+        songs: state.songs.map((song) =>
+          song.id === id ? { ...song, ...updates } : song
+        ),
+        selectedSong: state.selectedSong?.id === id 
+          ? { ...state.selectedSong, ...updates }
+          : state.selectedSong,
+      }))
+    } catch (error) {
+      console.error('Failed to update song:', error)
+      set({ error: 'Failed to update song' })
+    }
+  },
   
-  deleteSong: (id) => set((state) => ({
-    songs: state.songs.filter((song) => song.id !== id),
-    selectedSong: state.selectedSong?.id === id ? null : state.selectedSong,
-  })),
+  deleteSong: async (id) => {
+    try {
+      if (window.electronAPI?.songs) {
+        await window.electronAPI.songs.delete(id)
+      }
+      set((state) => ({
+        songs: state.songs.filter((song) => song.id !== id),
+        selectedSong: state.selectedSong?.id === id ? null : state.selectedSong,
+      }))
+    } catch (error) {
+      console.error('Failed to delete song:', error)
+      set({ error: 'Failed to delete song' })
+    }
+  },
   
   selectSong: (song) => set({ selectedSong: song }),
   

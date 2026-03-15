@@ -1,14 +1,24 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Sidebar from './components/Sidebar'
 import Library from './views/Library'
 import Schedule from './views/Schedule'
 import Presenter from './views/Presenter'
 import Settings from './views/Settings'
+import { useSongStore } from './stores/songStore'
+import { useScheduleStore } from './stores/scheduleStore'
 
 type View = 'library' | 'schedule' | 'presenter' | 'settings'
 
 function App() {
   const [currentView, setCurrentView] = useState<View>('library')
+  const loadSongs = useSongStore((state) => state.loadSongs)
+  const loadSchedules = useScheduleStore((state) => state.loadSchedules)
+
+  // Load data from database on startup
+  useEffect(() => {
+    loadSongs()
+    loadSchedules()
+  }, [loadSongs, loadSchedules])
 
   // Check if this is the presentation window
   const isPresentation = window.location.hash === '#/presentation'
@@ -33,9 +43,9 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen bg-[#1a1a2e]">
+    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#1a1a2e' }}>
       <Sidebar currentView={currentView} onViewChange={(v) => setCurrentView(v)} />
-      <main className="flex-1 overflow-hidden">
+      <main style={{ flex: 1, overflow: 'hidden' }}>
         {renderView()}
       </main>
     </div>
@@ -43,47 +53,91 @@ function App() {
 }
 
 function PresentationWindow() {
-  const [slideData, setSlideData] = useState<any>(null)
+  const [slideData, setSlideData] = useState<{
+    text?: string
+    backgroundColor?: string
+    backgroundImage?: string
+    fontSize?: string
+    fontFamily?: string
+    sectionType?: string
+  } | null>(null)
 
   // Listen for slide updates from main window
-  useState(() => {
+  useEffect(() => {
     if (window.electronAPI) {
       window.electronAPI.onSlideUpdate((data) => {
-        setSlideData(data)
+        setSlideData(data as typeof slideData)
       })
+      
+      return () => {
+        window.electronAPI?.removeSlideUpdateListener()
+      }
     }
-  })
+  }, [])
 
   if (!slideData) {
     return (
-      <div className="h-screen w-screen bg-black flex items-center justify-center">
-        <p className="text-white/30 text-2xl">Waiting for presentation...</p>
+      <div style={{ 
+        height: '100vh', 
+        width: '100vw', 
+        backgroundColor: '#000000',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}>
+        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '24px' }}>
+          Waiting for presentation...
+        </p>
       </div>
     )
   }
 
   return (
     <div 
-      className="h-screen w-screen flex items-center justify-center p-16"
       style={{
+        height: '100vh',
+        width: '100vw',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '64px',
         backgroundColor: slideData.backgroundColor || '#000000',
         backgroundImage: slideData.backgroundImage ? `url(${slideData.backgroundImage})` : undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
+        position: 'relative',
       }}
     >
-      <div className="text-center">
+      <div style={{ textAlign: 'center' }}>
         <p 
-          className="text-white leading-relaxed"
           style={{
+            color: '#ffffff',
+            lineHeight: 1.5,
             fontSize: slideData.fontSize || '4rem',
             fontFamily: slideData.fontFamily || 'inherit',
             textShadow: '2px 2px 8px rgba(0,0,0,0.8)',
+            margin: 0,
           }}
         >
           {slideData.text}
         </p>
       </div>
+      
+      {/* Section indicator */}
+      {slideData.sectionType && slideData.sectionType !== 'blank' && (
+        <div style={{
+          position: 'absolute',
+          bottom: '32px',
+          right: '32px',
+          fontSize: '14px',
+          color: 'rgba(255,255,255,0.4)',
+          fontWeight: 600,
+          textTransform: 'uppercase',
+          letterSpacing: '0.1em',
+        }}>
+          {slideData.sectionType}
+        </div>
+      )}
     </div>
   )
 }
