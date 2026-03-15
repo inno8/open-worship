@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { usePresentationStore } from '../stores/presentationStore'
 import { useScheduleStore, ScheduleItem } from '../stores/scheduleStore'
-import { parseLyrics, Section } from '../stores/songStore'
+import { useSongStore, parseLyrics, Section, Song } from '../stores/songStore'
 
 export default function Presenter() {
   const {
@@ -11,32 +11,54 @@ export default function Presenter() {
     setCurrentSlide,
   } = usePresentationStore()
 
-  const { activeSchedule } = useScheduleStore()
+  const { activeSchedule, addItem } = useScheduleStore()
+  const { songs } = useSongStore()
 
+  const [activeTab, setActiveTab] = useState<'schedule' | 'songs'>('schedule')
+  const [songSearch, setSongSearch] = useState('')
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const [selectedSongId, setSelectedSongId] = useState<string | null>(null)
   const [selectedVerseIndex, setSelectedVerseIndex] = useState<number>(0)
   const [previewSlide, setPreviewSlide] = useState<{ text: string; sectionType: string } | null>(null)
 
   const items = activeSchedule?.items ?? []
 
-  // Get the selected schedule item
+  // Filter songs by search
+  const filteredSongs = songs.filter(song => {
+    const q = songSearch.toLowerCase()
+    return song.title.toLowerCase().includes(q) || 
+           song.author.toLowerCase().includes(q) ||
+           song.lyrics.toLowerCase().includes(q)
+  })
+
+  // Get the selected schedule item or direct song
   const selectedItem = items.find(i => i.id === selectedItemId)
+  const selectedSong = songs.find(s => s.id === selectedSongId)
   
-  // Parse verses for the selected item
-  const verses: Section[] = selectedItem?.type === 'song' && selectedItem.song
+  // Parse verses - from schedule item or direct song
+  const verses: Section[] = activeTab === 'schedule' && selectedItem?.type === 'song' && selectedItem.song
     ? parseLyrics(selectedItem.song.lyrics)
-    : selectedItem?.type === 'custom' && selectedItem.customText
+    : activeTab === 'schedule' && selectedItem?.type === 'custom' && selectedItem.customText
     ? [{ type: 'Custom', lines: selectedItem.customText.split('\n').filter(l => l.trim()) }]
-    : selectedItem?.type === 'blank'
+    : activeTab === 'schedule' && selectedItem?.type === 'blank'
     ? [{ type: 'Blank', lines: [''] }]
+    : activeTab === 'songs' && selectedSong
+    ? parseLyrics(selectedSong.lyrics)
     : []
+
+  // Get current title for verse panel
+  const currentTitle = activeTab === 'schedule' && selectedItem
+    ? getItemTitle(selectedItem)
+    : activeTab === 'songs' && selectedSong
+    ? selectedSong.title
+    : 'Select an item'
 
   // Auto-select first item if none selected
   useEffect(() => {
-    if (!selectedItemId && items.length > 0) {
+    if (activeTab === 'schedule' && !selectedItemId && items.length > 0) {
       setSelectedItemId(items[0].id)
     }
-  }, [items, selectedItemId])
+  }, [items, selectedItemId, activeTab])
 
   // Update preview when verse selection changes
   useEffect(() => {
@@ -46,8 +68,15 @@ export default function Presenter() {
         text: verse.lines.join('\n'),
         sectionType: verse.type,
       })
+    } else {
+      setPreviewSlide(null)
     }
   }, [selectedVerseIndex, verses])
+
+  // Reset verse index when switching items
+  useEffect(() => {
+    setSelectedVerseIndex(0)
+  }, [selectedItemId, selectedSongId])
 
   // Keyboard navigation
   useEffect(() => {
@@ -86,8 +115,27 @@ export default function Presenter() {
   }, [isLive, selectedVerseIndex, verses])
 
   function handleSelectItem(item: ScheduleItem) {
+    setActiveTab('schedule')
     setSelectedItemId(item.id)
+    setSelectedSongId(null)
     setSelectedVerseIndex(0)
+  }
+
+  function handleSelectSong(song: Song) {
+    setSelectedSongId(song.id)
+    setSelectedItemId(null)
+    setSelectedVerseIndex(0)
+  }
+
+  async function handleAddSongToSchedule(song: Song) {
+    if (!activeSchedule) return
+    const item: ScheduleItem = {
+      id: crypto.randomUUID(),
+      order: activeSchedule.items.length,
+      type: 'song',
+      song,
+    }
+    await addItem(activeSchedule.id, item)
   }
 
   function handleSelectVerse(index: number) {
@@ -114,7 +162,7 @@ export default function Presenter() {
   function handleNextVerse() {
     if (selectedVerseIndex < verses.length - 1) {
       handleSelectVerse(selectedVerseIndex + 1)
-    } else if (items.length > 0) {
+    } else if (activeTab === 'schedule' && items.length > 0) {
       // Move to next schedule item
       const currentIdx = items.findIndex(i => i.id === selectedItemId)
       if (currentIdx < items.length - 1) {
@@ -127,13 +175,11 @@ export default function Presenter() {
   function handlePrevVerse() {
     if (selectedVerseIndex > 0) {
       handleSelectVerse(selectedVerseIndex - 1)
-    } else if (items.length > 0) {
+    } else if (activeTab === 'schedule' && items.length > 0) {
       // Move to previous schedule item
       const currentIdx = items.findIndex(i => i.id === selectedItemId)
       if (currentIdx > 0) {
-        const prevItem = items[currentIdx - 1]
-        setSelectedItemId(prevItem.id)
-        // Will auto-set to last verse of prev item after re-render
+        setSelectedItemId(items[currentIdx - 1].id)
       }
     }
   }
@@ -310,13 +356,206 @@ export default function Presenter() {
         </div>
       </div>
 
-      {/* Main content: Schedule | Verses | Outputs */}
+      {/* Main content */}
       <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         
-        {/* Schedule Panel */}
+        {/* Schedule/Songs Panel with Tabs */}
         <div style={{ 
-          width: '220px', 
-          minWidth: '220px',
+          width: '280px', 
+          minWidth: '280px',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: '#16213e',
+          borderRight: '1px solid rgba(255,255,255,0.08)',
+        }}>
+          {/* Tabs */}
+          <div style={{ 
+            display: 'flex',
+            borderBottom: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <button
+              onClick={() => setActiveTab('schedule')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                backgroundColor: activeTab === 'schedule' ? 'rgba(233,69,96,0.15)' : 'transparent',
+                color: activeTab === 'schedule' ? '#e94560' : '#a0aec0',
+                border: 'none',
+                borderBottom: activeTab === 'schedule' ? '2px solid #e94560' : '2px solid transparent',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 600,
+              }}
+            >
+              Schedule
+            </button>
+            <button
+              onClick={() => setActiveTab('songs')}
+              style={{
+                flex: 1,
+                padding: '12px',
+                backgroundColor: activeTab === 'songs' ? 'rgba(233,69,96,0.15)' : 'transparent',
+                color: activeTab === 'songs' ? '#e94560' : '#a0aec0',
+                border: 'none',
+                borderBottom: activeTab === 'songs' ? '2px solid #e94560' : '2px solid transparent',
+                cursor: 'pointer',
+                fontSize: '12px',
+                fontWeight: 600,
+              }}
+            >
+              Songs
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'schedule' ? (
+            <div style={{ flex: 1, overflowY: 'auto' }}>
+              {items.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0', fontSize: '13px' }}>
+                  No items in schedule
+                </div>
+              ) : (
+                items.map((item, idx) => (
+                  <div
+                    key={item.id}
+                    onClick={() => handleSelectItem(item)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '10px',
+                      padding: '12px 16px',
+                      cursor: 'pointer',
+                      backgroundColor: selectedItemId === item.id ? 'rgba(233,69,96,0.15)' : 'transparent',
+                      borderLeft: selectedItemId === item.id ? '3px solid #e94560' : '3px solid transparent',
+                    }}
+                  >
+                    <span style={{ 
+                      fontSize: '11px', 
+                      color: 'rgba(160,174,192,0.5)', 
+                      fontFamily: 'monospace',
+                      width: '16px',
+                    }}>
+                      {idx + 1}
+                    </span>
+                    <span style={{ color: item.type === 'song' ? '#e94560' : '#a0aec0' }}>
+                      {getItemIcon(item.type)}
+                    </span>
+                    <span style={{ 
+                      fontSize: '13px', 
+                      color: '#ffffff',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      flex: 1,
+                    }}>
+                      {getItemTitle(item)}
+                    </span>
+                  </div>
+                ))
+              )}
+            </div>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              {/* Search */}
+              <div style={{ padding: '12px' }}>
+                <div style={{ position: 'relative' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="2" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }}>
+                    <circle cx="11" cy="11" r="8" />
+                    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                  </svg>
+                  <input
+                    type="text"
+                    placeholder="Search songs..."
+                    value={songSearch}
+                    onChange={(e) => setSongSearch(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '10px 12px 10px 36px',
+                      borderRadius: '8px',
+                      backgroundColor: '#1a1a2e',
+                      color: '#ffffff',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      fontSize: '13px',
+                      outline: 'none',
+                    }}
+                  />
+                </div>
+              </div>
+              {/* Song List */}
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {filteredSongs.length === 0 ? (
+                  <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0', fontSize: '13px' }}>
+                    No songs found
+                  </div>
+                ) : (
+                  filteredSongs.map((song) => (
+                    <div
+                      key={song.id}
+                      onClick={() => handleSelectSong(song)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '10px 16px',
+                        cursor: 'pointer',
+                        backgroundColor: selectedSongId === song.id ? 'rgba(233,69,96,0.15)' : 'transparent',
+                        borderLeft: selectedSongId === song.id ? '3px solid #e94560' : '3px solid transparent',
+                      }}
+                    >
+                      <span style={{ color: '#e94560' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                          <path d="M9 18V5l12-2v13" />
+                          <circle cx="6" cy="18" r="3" />
+                          <circle cx="18" cy="16" r="3" />
+                        </svg>
+                      </span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ 
+                          fontSize: '13px', 
+                          color: '#ffffff',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}>
+                          {song.title}
+                        </div>
+                        <div style={{ 
+                          fontSize: '11px', 
+                          color: '#a0aec0',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}>
+                          {song.author}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleAddSongToSchedule(song) }}
+                        title="Add to schedule"
+                        style={{
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: 'rgba(255,255,255,0.05)',
+                          color: '#a0aec0',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '11px',
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Verses Panel */}
+        <div style={{ 
+          width: '300px',
+          minWidth: '300px',
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: '#16213e',
@@ -326,127 +565,72 @@ export default function Presenter() {
             padding: '12px 16px', 
             borderBottom: '1px solid rgba(255,255,255,0.08)',
           }}>
-            <span style={{ fontSize: '12px', fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Schedule</span>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>
+              {currentTitle}
+            </span>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
-            {items.length === 0 ? (
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
+            {verses.length === 0 ? (
               <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0', fontSize: '13px' }}>
-                No items in schedule
+                Select an item to see verses
               </div>
             ) : (
-              items.map((item, idx) => (
+              verses.map((verse, idx) => (
                 <div
-                  key={item.id}
-                  onClick={() => handleSelectItem(item)}
+                  key={idx}
+                  onClick={() => handleSelectVerse(idx)}
+                  onDoubleClick={handlePushToLive}
                   style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '10px',
-                    padding: '12px 16px',
+                    padding: '12px 14px',
+                    marginBottom: '6px',
+                    borderRadius: '8px',
                     cursor: 'pointer',
-                    backgroundColor: selectedItemId === item.id ? 'rgba(233,69,96,0.15)' : 'transparent',
-                    borderLeft: selectedItemId === item.id ? '3px solid #e94560' : '3px solid transparent',
+                    backgroundColor: selectedVerseIndex === idx 
+                      ? 'rgba(233,69,96,0.2)' 
+                      : 'rgba(255,255,255,0.03)',
+                    border: selectedVerseIndex === idx 
+                      ? '1px solid #e94560' 
+                      : '1px solid transparent',
                   }}
                 >
-                  <span style={{ 
-                    fontSize: '11px', 
-                    color: 'rgba(160,174,192,0.5)', 
-                    fontFamily: 'monospace',
-                    width: '16px',
+                  <div style={{ 
+                    fontSize: '10px', 
+                    fontWeight: 700, 
+                    color: '#e94560', 
+                    marginBottom: '6px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
                   }}>
-                    {idx + 1}
-                  </span>
-                  <span style={{ color: item.type === 'song' ? '#e94560' : '#a0aec0' }}>
-                    {getItemIcon(item.type)}
-                  </span>
-                  <span style={{ 
-                    fontSize: '13px', 
-                    color: '#ffffff',
-                    whiteSpace: 'nowrap',
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    flex: 1,
-                  }}>
-                    {getItemTitle(item)}
-                  </span>
+                    {verse.type}
+                  </div>
+                  <div style={{ fontSize: '12px', color: '#ffffff', lineHeight: 1.5 }}>
+                    {verse.lines.slice(0, 3).map((line, i) => (
+                      <div key={i} style={{ 
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                      }}>
+                        {line}
+                      </div>
+                    ))}
+                    {verse.lines.length > 3 && (
+                      <div style={{ color: '#a0aec0', fontStyle: 'italic' }}>
+                        +{verse.lines.length - 3} more lines
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))
             )}
           </div>
         </div>
 
-        {/* Verses Panel */}
-        <div style={{ 
-          width: '320px',
-          minWidth: '320px',
-          display: 'flex',
-          flexDirection: 'column',
-          backgroundColor: '#16213e',
-          borderRight: '1px solid rgba(255,255,255,0.08)',
-        }}>
-          <div style={{ 
-            padding: '16px 20px', 
-            borderBottom: '1px solid rgba(255,255,255,0.08)',
-          }}>
-            <span style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>
-              {selectedItem ? getItemTitle(selectedItem) : 'Select an item'}
-            </span>
-          </div>
-          <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
-            {verses.map((verse, idx) => (
-              <div
-                key={idx}
-                onClick={() => handleSelectVerse(idx)}
-                onDoubleClick={handlePushToLive}
-                style={{
-                  padding: '12px 14px',
-                  marginBottom: '6px',
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  backgroundColor: selectedVerseIndex === idx 
-                    ? 'rgba(233,69,96,0.2)' 
-                    : 'rgba(255,255,255,0.03)',
-                  border: selectedVerseIndex === idx 
-                    ? '1px solid #e94560' 
-                    : '1px solid transparent',
-                }}
-              >
-                <div style={{ 
-                  fontSize: '10px', 
-                  fontWeight: 700, 
-                  color: '#e94560', 
-                  marginBottom: '6px',
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
-                }}>
-                  {verse.type}
-                </div>
-                <div style={{ fontSize: '12px', color: '#ffffff', lineHeight: 1.5 }}>
-                  {verse.lines.slice(0, 3).map((line, i) => (
-                    <div key={i} style={{ 
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}>
-                      {line}
-                    </div>
-                  ))}
-                  {verse.lines.length > 3 && (
-                    <div style={{ color: '#a0aec0', fontStyle: 'italic' }}>
-                      +{verse.lines.length - 3} more lines
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Preview and Live Outputs - Side by side in remaining space */}
+        {/* Preview and Live Outputs */}
         <div style={{ 
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
+          minWidth: '300px',
         }}>
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             {/* Preview Output */}
@@ -503,7 +687,7 @@ export default function Presenter() {
                     </div>
                     <p style={{ 
                       color: '#ffffff', 
-                      fontSize: '18px', 
+                      fontSize: '16px', 
                       lineHeight: 1.6,
                       margin: 0,
                       textShadow: '1px 1px 4px rgba(0,0,0,0.8)',
@@ -543,7 +727,7 @@ export default function Presenter() {
                   }}
                 />
                 <span style={{ fontSize: '11px', fontWeight: 700, color: isLive ? '#22c55e' : '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Live Output
+                  Live
                 </span>
               </div>
               <div style={{ 
@@ -568,7 +752,7 @@ export default function Presenter() {
                     </div>
                     <p style={{ 
                       color: '#ffffff', 
-                      fontSize: '18px', 
+                      fontSize: '16px', 
                       lineHeight: 1.6,
                       margin: 0,
                       textShadow: '1px 1px 4px rgba(0,0,0,0.8)',
