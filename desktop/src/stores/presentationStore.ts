@@ -63,7 +63,8 @@ export const usePresentationStore = create<PresentationState>((set, get) => ({
     const { sections, fontSize, fontFamily, defaultBackground } = get()
     if (index >= 0 && index < sections.length) {
       const section = sections[index]
-      const text = section.lines.join('\n')
+      // Show first line of the section, not all lines
+      const text = section.lines[0] || ''
       
       set({
         currentSectionIndex: index,
