@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { useSongStore, parseLyrics, Song } from '../stores/songStore'
+import { useSongStore, parseLyrics, autoFormatLyrics, Song } from '../stores/songStore'
 import { useScheduleStore } from '../stores/scheduleStore'
 
 // Parse a text file to extract song info
@@ -104,11 +104,13 @@ export default function Library() {
         const parsed = parseTextFile(content, file.name)
         
         const now = new Date().toISOString()
+        // Auto-format lyrics to split long verses
+        const formattedLyrics = autoFormatLyrics(parsed.lyrics || '[Verse 1]\nEnter lyrics here')
         const newSong: Song = {
           id: crypto.randomUUID(),
           title: parsed.title,
           author: parsed.author,
-          lyrics: parsed.lyrics || '[Verse 1]\nEnter lyrics here',
+          lyrics: formattedLyrics,
           tags: [],
           createdAt: now,
           updatedAt: now,
@@ -141,6 +143,7 @@ export default function Library() {
     return (
       song.title.toLowerCase().includes(q) ||
       song.author.toLowerCase().includes(q) ||
+      song.lyrics.toLowerCase().includes(q) ||
       song.tags.some((t) => t.toLowerCase().includes(q))
     )
   })

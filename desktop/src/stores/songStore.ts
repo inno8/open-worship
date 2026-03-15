@@ -120,26 +120,108 @@ export const useSongStore = create<SongState>((set, get) => ({
   setError: (error) => set({ error }),
 }))
 
-// Helper to parse lyrics into sections
+// Max lines per slide/verse
+const MAX_LINES_PER_SLIDE = 3
+
+// Helper to parse lyrics into sections, splitting into slides of max 3 lines
 export function parseLyrics(lyrics: string): Section[] {
   const sections: Section[] = []
-  let currentSection: Section = { type: 'Intro', lines: [] }
+  let currentType = 'Verse 1'
+  let currentLines: string[] = []
 
   for (const line of lyrics.split('\n')) {
     const match = line.trim().match(/^\[(.+?)\]$/)
     if (match) {
-      if (currentSection.lines.length > 0) {
-        sections.push(currentSection)
+      // Save current section if it has content
+      if (currentLines.length > 0) {
+        // Split into chunks of MAX_LINES_PER_SLIDE
+        const chunks = chunkLines(currentLines, MAX_LINES_PER_SLIDE)
+        chunks.forEach((chunk, idx) => {
+          sections.push({ 
+            type: chunks.length > 1 ? `${currentType} (${idx + 1})` : currentType, 
+            lines: chunk 
+          })
+        })
       }
-      currentSection = { type: match[1], lines: [] }
+      currentType = match[1]
+      currentLines = []
     } else if (line.trim()) {
-      currentSection.lines.push(line.trim())
+      currentLines.push(line.trim())
     }
   }
 
-  if (currentSection.lines.length > 0) {
-    sections.push(currentSection)
+  // Don't forget the last section
+  if (currentLines.length > 0) {
+    const chunks = chunkLines(currentLines, MAX_LINES_PER_SLIDE)
+    chunks.forEach((chunk, idx) => {
+      sections.push({ 
+        type: chunks.length > 1 ? `${currentType} (${idx + 1})` : currentType, 
+        lines: chunk 
+      })
+    })
   }
 
   return sections
+}
+
+// Split array into chunks of specified size
+function chunkLines(lines: string[], size: number): string[][] {
+  const chunks: string[][] = []
+  for (let i = 0; i < lines.length; i += size) {
+    chunks.push(lines.slice(i, i + size))
+  }
+  return chunks
+}
+
+// Auto-format lyrics: split long verses into sections with max 3 lines
+export function autoFormatLyrics(lyrics: string): string {
+  const lines = lyrics.split('\n')
+  const result: string[] = []
+  let inSection = false
+  let lineCount = 0
+  let verseNum = 1
+  let currentSectionType = ''
+  
+  for (const line of lines) {
+    const trimmed = line.trim()
+    const sectionMatch = trimmed.match(/^\[(.+?)\]$/)
+    
+    if (sectionMatch) {
+      // It's a section marker
+      inSection = true
+      lineCount = 0
+      currentSectionType = sectionMatch[1]
+      result.push(trimmed)
+    } else if (trimmed) {
+      // It's a lyric line
+      if (!inSection) {
+        // No section marker yet, add one
+        result.push(`[Verse ${verseNum}]`)
+        verseNum++
+        inSection = true
+        lineCount = 0
+      }
+      
+      // Check if we need to start a new section
+      if (lineCount >= MAX_LINES_PER_SLIDE) {
+        // Start a new section - reuse the type with continuation
+        const baseType = currentSectionType.replace(/\s*\(\d+\)$/, '')
+        result.push('')
+        result.push(`[${baseType} cont.]`)
+        lineCount = 0
+      }
+      
+      result.push(trimmed)
+      lineCount++
+    } else {
+      // Empty line - could signal end of section
+      if (lineCount > 0) {
+        inSection = false
+        lineCount = 0
+      }
+      result.push('')
+    }
+  }
+  
+  return result.join('\n').replace(/\n{3,}/g, '\n\n').trim()
 }
