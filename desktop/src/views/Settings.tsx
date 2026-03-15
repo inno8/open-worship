@@ -19,11 +19,11 @@ const BACKGROUND_PRESETS = [
 ]
 
 const SHORTCUTS = [
+  { keys: 'Space', action: 'Next slide' },
   { keys: '← →', action: 'Previous / Next slide' },
   { keys: '↑ ↓', action: 'Previous / Next slide' },
   { keys: 'B', action: 'Black screen' },
   { keys: 'Esc', action: 'Stop live presentation' },
-  { keys: 'Space', action: 'Next slide' },
 ]
 
 export default function Settings() {
@@ -72,7 +72,6 @@ export default function Settings() {
 
   function handleSave() {
     // Settings are already persisted via zustand store
-    // This could persist backendUrl etc. in the future
   }
 
   function handleReset() {
@@ -83,55 +82,113 @@ export default function Settings() {
     setBackendUrl('http://localhost:8000')
   }
 
-  return (
-    <div className="h-full overflow-y-auto">
-      <div className="max-w-2xl mx-auto px-6 py-8">
-        <h1 className="text-2xl font-bold text-white mb-8">Settings</h1>
+  const inputStyle: React.CSSProperties = {
+    width: '100%',
+    padding: '14px 16px',
+    borderRadius: '12px',
+    backgroundColor: '#1a1a2e',
+    color: '#ffffff',
+    border: '1px solid rgba(255,255,255,0.1)',
+    fontSize: '14px',
+    outline: 'none',
+  }
 
-        <div className="space-y-10">
+  const labelStyle: React.CSSProperties = {
+    display: 'block',
+    fontSize: '14px',
+    fontWeight: 500,
+    color: '#a0aec0',
+    marginBottom: '8px',
+  }
+
+  const sectionTitleStyle: React.CSSProperties = {
+    fontSize: '11px',
+    fontWeight: 700,
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.1em',
+    color: 'rgba(160,174,192,0.6)',
+    marginBottom: '20px',
+  }
+
+  const buttonPrimaryStyle: React.CSSProperties = {
+    padding: '14px 28px',
+    borderRadius: '12px',
+    backgroundColor: '#e94560',
+    color: '#ffffff',
+    fontWeight: 600,
+    fontSize: '14px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'opacity 0.2s',
+  }
+
+  const buttonSecondaryStyle: React.CSSProperties = {
+    padding: '14px 20px',
+    borderRadius: '12px',
+    backgroundColor: '#0f3460',
+    color: '#ffffff',
+    fontWeight: 500,
+    fontSize: '14px',
+    border: 'none',
+    cursor: 'pointer',
+    transition: 'opacity 0.2s',
+  }
+
+  return (
+    <div style={{ height: '100%', overflowY: 'auto', backgroundColor: '#1a1a2e' }}>
+      <div style={{ maxWidth: '720px', margin: '0 auto', padding: '48px 32px' }}>
+        <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#ffffff', marginBottom: '48px' }}>
+          Settings
+        </h1>
+
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
+          
           {/* DISPLAY */}
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#a0aec0]/60 mb-4">Display</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-[#a0aec0] mb-1.5">
-                  Presentation Output
-                </label>
-                <div className="flex gap-2">
-                  <select
-                    value={displayId ?? ''}
-                    onChange={(e) =>
-                      setDisplayId(e.target.value ? Number(e.target.value) : null)
-                    }
-                    className="flex-1 px-3 py-2.5 rounded-lg bg-[#16213e] text-white border border-white/10 focus:border-[#e94560] focus:outline-none text-sm"
-                  >
-                    <option value="">Auto (Primary)</option>
-                    {displays.map((d) => (
-                      <option key={d.id} value={d.id}>
-                        {d.label} ({d.size.width}x{d.size.height})
-                      </option>
-                    ))}
-                  </select>
-                  <button className="px-4 py-2.5 rounded-lg bg-[#0f3460] hover:bg-[#0f3460]/80 text-white text-sm font-medium transition-colors">
-                    Preview
-                  </button>
-                </div>
+            <h2 style={sectionTitleStyle}>Display</h2>
+            <div style={{ 
+              backgroundColor: '#16213e', 
+              borderRadius: '16px', 
+              padding: '24px',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}>
+              <label style={labelStyle}>Presentation Output</label>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <select
+                  value={displayId ?? ''}
+                  onChange={(e) => setDisplayId(e.target.value ? Number(e.target.value) : null)}
+                  style={{ ...inputStyle, flex: 1 }}
+                >
+                  <option value="">Auto (Primary)</option>
+                  {displays.map((d) => (
+                    <option key={d.id} value={d.id}>
+                      {d.label} ({d.size.width}x{d.size.height})
+                    </option>
+                  ))}
+                </select>
+                <button style={buttonSecondaryStyle}>Preview</button>
               </div>
             </div>
           </section>
 
           {/* APPEARANCE */}
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#a0aec0]/60 mb-4">Appearance</h2>
-            <div className="space-y-5">
+            <h2 style={sectionTitleStyle}>Appearance</h2>
+            <div style={{ 
+              backgroundColor: '#16213e', 
+              borderRadius: '16px', 
+              padding: '24px',
+              border: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '24px'
+            }}>
               <div>
-                <label className="block text-sm font-medium text-[#a0aec0] mb-1.5">
-                  Font Family
-                </label>
+                <label style={labelStyle}>Font Family</label>
                 <select
                   value={fontFamily}
                   onChange={(e) => setFontFamily(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-lg bg-[#16213e] text-white border border-white/10 focus:border-[#e94560] focus:outline-none text-sm"
+                  style={inputStyle}
                 >
                   <option value="inherit">System Default</option>
                   <option value="'Georgia', serif">Georgia</option>
@@ -144,9 +201,7 @@ export default function Settings() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#a0aec0] mb-1.5">
-                  Font Size: {fontSizeSliderVal}px
-                </label>
+                <label style={labelStyle}>Font Size: {fontSizeSliderVal}px</label>
                 <input
                   type="range"
                   min="48"
@@ -154,19 +209,36 @@ export default function Settings() {
                   step="2"
                   value={fontSizeSliderVal}
                   onChange={(e) => handleFontSizeChange(Number(e.target.value))}
-                  className="w-full accent-[#e94560]"
+                  style={{ 
+                    width: '100%', 
+                    accentColor: '#e94560',
+                    height: '8px',
+                    borderRadius: '4px',
+                  }}
                 />
-                <div className="flex justify-between text-[10px] text-[#a0aec0]/50 mt-1">
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  fontSize: '11px', 
+                  color: 'rgba(160,174,192,0.5)',
+                  marginTop: '8px'
+                }}>
                   <span>48px</span>
                   <span>96px</span>
                 </div>
               </div>
 
               {/* Font preview */}
-              <div
-                className="p-6 rounded-xl bg-black border border-white/5 text-center text-white"
-                style={{ fontFamily, fontSize: `${fontSizeSliderVal / 4}px` }}
-              >
+              <div style={{
+                padding: '32px',
+                borderRadius: '12px',
+                backgroundColor: '#000000',
+                border: '1px solid rgba(255,255,255,0.05)',
+                textAlign: 'center',
+                color: '#ffffff',
+                fontFamily,
+                fontSize: `${fontSizeSliderVal / 3}px`,
+              }}>
                 Preview Text
               </div>
             </div>
@@ -174,76 +246,110 @@ export default function Settings() {
 
           {/* BACKGROUNDS */}
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#a0aec0]/60 mb-4">Backgrounds</h2>
-            <div className="grid grid-cols-4 gap-3">
-              {BACKGROUND_PRESETS.map((bg) => (
-                <button
-                  key={bg}
-                  onClick={() => setDefaultBackground(bg)}
-                  className={`aspect-video rounded-lg border-2 transition-colors ${
-                    defaultBackground === bg
-                      ? 'border-[#e94560]'
-                      : 'border-white/10 hover:border-white/20'
-                  }`}
-                  style={{ backgroundColor: bg }}
+            <h2 style={sectionTitleStyle}>Backgrounds</h2>
+            <div style={{ 
+              backgroundColor: '#16213e', 
+              borderRadius: '16px', 
+              padding: '24px',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}>
+              <div style={{ 
+                display: 'grid', 
+                gridTemplateColumns: 'repeat(4, 1fr)', 
+                gap: '12px',
+                marginBottom: '20px'
+              }}>
+                {BACKGROUND_PRESETS.map((bg) => (
+                  <button
+                    key={bg}
+                    onClick={() => setDefaultBackground(bg)}
+                    style={{
+                      aspectRatio: '16/9',
+                      borderRadius: '12px',
+                      border: defaultBackground === bg 
+                        ? '3px solid #e94560' 
+                        : '2px solid rgba(255,255,255,0.1)',
+                      backgroundColor: bg,
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s',
+                    }}
+                  />
+                ))}
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <input
+                  type="color"
+                  value={defaultBackground}
+                  onChange={(e) => setDefaultBackground(e.target.value)}
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    borderRadius: '12px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    cursor: 'pointer',
+                    backgroundColor: 'transparent',
+                    padding: '2px',
+                  }}
                 />
-              ))}
-            </div>
-            <div className="flex items-center gap-3 mt-4">
-              <input
-                type="color"
-                value={defaultBackground}
-                onChange={(e) => setDefaultBackground(e.target.value)}
-                className="w-10 h-10 rounded-lg border border-white/10 cursor-pointer bg-transparent"
-              />
-              <input
-                type="text"
-                value={defaultBackground}
-                onChange={(e) => setDefaultBackground(e.target.value)}
-                className="flex-1 px-3 py-2 rounded-lg bg-[#16213e] text-white border border-white/10 focus:border-[#e94560] focus:outline-none font-mono text-sm"
-              />
-              <button className="px-4 py-2.5 rounded-lg border border-white/10 hover:border-white/30 text-[#a0aec0] hover:text-white text-sm font-medium transition-colors">
-                Upload New
-              </button>
+                <input
+                  type="text"
+                  value={defaultBackground}
+                  onChange={(e) => setDefaultBackground(e.target.value)}
+                  style={{ ...inputStyle, flex: 1, fontFamily: 'monospace' }}
+                />
+                <button style={{
+                  ...buttonSecondaryStyle,
+                  backgroundColor: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  color: '#a0aec0',
+                }}>
+                  Upload New
+                </button>
+              </div>
             </div>
           </section>
 
           {/* CONNECTION */}
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#a0aec0]/60 mb-4">Connection</h2>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-sm font-medium text-[#a0aec0] mb-1.5">
-                  Backend URL
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={backendUrl}
-                    onChange={(e) => setBackendUrl(e.target.value)}
-                    placeholder="http://localhost:8000"
-                    className="flex-1 px-3 py-2.5 rounded-lg bg-[#16213e] text-white border border-white/10 focus:border-[#e94560] focus:outline-none font-mono text-sm"
-                  />
-                  <button
-                    onClick={testConnection}
-                    disabled={connectionStatus === 'testing'}
-                    className="px-4 py-2.5 rounded-lg bg-[#0f3460] hover:bg-[#0f3460]/80 text-white text-sm font-medium transition-colors disabled:opacity-50"
-                  >
-                    {connectionStatus === 'testing' ? 'Testing...' : 'Test'}
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <div
-                  className={`w-2 h-2 rounded-full ${
-                    connectionStatus === 'connected'
-                      ? 'bg-green-500'
-                      : connectionStatus === 'testing'
-                      ? 'bg-yellow-500 animate-pulse'
-                      : 'bg-[#a0aec0]/30'
-                  }`}
+            <h2 style={sectionTitleStyle}>Connection</h2>
+            <div style={{ 
+              backgroundColor: '#16213e', 
+              borderRadius: '16px', 
+              padding: '24px',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}>
+              <label style={labelStyle}>Backend URL</label>
+              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
+                <input
+                  type="text"
+                  value={backendUrl}
+                  onChange={(e) => setBackendUrl(e.target.value)}
+                  placeholder="http://localhost:8000"
+                  style={{ ...inputStyle, flex: 1, fontFamily: 'monospace' }}
                 />
-                <span className="text-xs text-[#a0aec0]">
+                <button
+                  onClick={testConnection}
+                  disabled={connectionStatus === 'testing'}
+                  style={{
+                    ...buttonSecondaryStyle,
+                    opacity: connectionStatus === 'testing' ? 0.5 : 1,
+                  }}
+                >
+                  {connectionStatus === 'testing' ? 'Testing...' : 'Test'}
+                </button>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: '50%',
+                  backgroundColor: connectionStatus === 'connected' 
+                    ? '#22c55e' 
+                    : connectionStatus === 'testing'
+                    ? '#eab308'
+                    : 'rgba(160,174,192,0.3)',
+                }} />
+                <span style={{ fontSize: '13px', color: '#a0aec0' }}>
                   {connectionStatus === 'connected'
                     ? 'Connected'
                     : connectionStatus === 'testing'
@@ -256,12 +362,34 @@ export default function Settings() {
 
           {/* KEYBOARD SHORTCUTS */}
           <section>
-            <h2 className="text-xs font-bold uppercase tracking-widest text-[#a0aec0]/60 mb-4">Keyboard Shortcuts</h2>
-            <div className="bg-[#16213e] rounded-xl border border-white/5 divide-y divide-white/5">
-              {SHORTCUTS.map((shortcut) => (
-                <div key={shortcut.keys} className="flex items-center justify-between px-4 py-3">
-                  <span className="text-sm text-[#a0aec0]">{shortcut.action}</span>
-                  <kbd className="px-2.5 py-1 rounded-lg bg-[#1a1a2e] text-white text-xs font-mono border border-white/10">
+            <h2 style={sectionTitleStyle}>Keyboard Shortcuts</h2>
+            <div style={{ 
+              backgroundColor: '#16213e', 
+              borderRadius: '16px', 
+              border: '1px solid rgba(255,255,255,0.05)',
+              overflow: 'hidden',
+            }}>
+              {SHORTCUTS.map((shortcut, idx) => (
+                <div 
+                  key={shortcut.keys} 
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between', 
+                    padding: '16px 24px',
+                    borderBottom: idx < SHORTCUTS.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none',
+                  }}
+                >
+                  <span style={{ fontSize: '14px', color: '#a0aec0' }}>{shortcut.action}</span>
+                  <kbd style={{
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    backgroundColor: '#1a1a2e',
+                    color: '#ffffff',
+                    fontSize: '12px',
+                    fontFamily: 'monospace',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                  }}>
                     {shortcut.keys}
                   </kbd>
                 </div>
@@ -270,16 +398,29 @@ export default function Settings() {
           </section>
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-4 pb-8 border-t border-white/10">
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            paddingTop: '32px',
+            paddingBottom: '48px',
+            borderTop: '1px solid rgba(255,255,255,0.1)',
+          }}>
             <button
               onClick={handleReset}
-              className="text-sm text-[#a0aec0] hover:text-white transition-colors"
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#a0aec0',
+                fontSize: '14px',
+                cursor: 'pointer',
+              }}
             >
               Reset to Defaults
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2.5 rounded-lg bg-[#e94560] hover:bg-[#ff6b6b] text-white font-medium transition-colors text-sm"
+              style={buttonPrimaryStyle}
             >
               Save Changes
             </button>

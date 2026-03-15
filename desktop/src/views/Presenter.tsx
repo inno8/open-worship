@@ -33,6 +33,7 @@ export default function Presenter() {
     function handleKey(e: KeyboardEvent) {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
       switch (e.key) {
+        case ' ':
         case 'ArrowRight':
         case 'ArrowDown':
           e.preventDefault()
@@ -110,72 +111,159 @@ export default function Presenter() {
     }
   }
 
+  const buttonStyle: React.CSSProperties = {
+    padding: '14px 24px',
+    borderRadius: '12px',
+    backgroundColor: '#16213e',
+    color: '#ffffff',
+    fontSize: '14px',
+    fontWeight: 600,
+    border: 'none',
+    cursor: 'pointer',
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  }
+
   return (
-    <div className="h-full flex flex-col p-6">
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', padding: '28px', backgroundColor: '#1a1a2e' }}>
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
         <div>
-          <h1 className="text-xl font-bold text-white">Presenter</h1>
-          <p className="text-sm text-[#a0aec0]">
+          <h1 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: '0 0 4px' }}>Presenter</h1>
+          <p style={{ fontSize: '14px', color: '#a0aec0', margin: 0 }}>
             {selectedSong ? selectedSong.title : 'No song selected'}
           </p>
         </div>
         {/* Live status indicator */}
-        <div className="flex items-center gap-2">
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <div
-            className={`w-2.5 h-2.5 rounded-full ${
-              isLive ? 'bg-green-500' : 'bg-[#a0aec0]/30'
-            }`}
-            style={isLive ? { animation: 'pulse-live 1.5s ease-in-out infinite' } : undefined}
+            style={{
+              width: '12px',
+              height: '12px',
+              borderRadius: '50%',
+              backgroundColor: isLive ? '#22c55e' : 'rgba(160,174,192,0.3)',
+              animation: isLive ? 'pulse 1.5s ease-in-out infinite' : 'none',
+            }}
           />
-          <span className={`text-xs font-bold tracking-wider ${isLive ? 'text-green-500' : 'text-[#a0aec0]/50'}`}>
+          <span style={{ 
+            fontSize: '12px', 
+            fontWeight: 700, 
+            letterSpacing: '0.05em',
+            color: isLive ? '#22c55e' : 'rgba(160,174,192,0.5)' 
+          }}>
             {isLive ? 'LIVE' : 'OFF AIR'}
           </span>
         </div>
       </div>
 
       {sections.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="mx-auto mb-3 opacity-30">
-              <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-              <line x1="8" y1="21" x2="16" y2="21" />
-              <line x1="12" y1="17" x2="12" y2="21" />
-            </svg>
-            <p className="text-[#a0aec0]">Select a song from the Library to present</p>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ 
+              width: '80px', 
+              height: '80px', 
+              borderRadius: '20px', 
+              backgroundColor: 'rgba(160,174,192,0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              margin: '0 auto 20px',
+            }}>
+              <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.5 }}>
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                <line x1="8" y1="21" x2="16" y2="21" />
+                <line x1="12" y1="17" x2="12" y2="21" />
+              </svg>
+            </div>
+            <p style={{ color: '#a0aec0', fontSize: '16px', margin: 0 }}>Select a song from the Library to present</p>
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col gap-4 min-h-0">
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '24px', minHeight: 0 }}>
           {/* Slide previews */}
-          <div className="flex gap-4 flex-1 min-h-0">
+          <div style={{ flex: 1, display: 'flex', gap: '20px', minHeight: 0 }}>
             {/* Current slide (larger) */}
-            <div className="flex-[2] flex flex-col">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#a0aec0]/60 mb-1.5">
+            <div style={{ flex: 2, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ 
+                fontSize: '11px', 
+                fontWeight: 700, 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.1em', 
+                color: 'rgba(160,174,192,0.5)', 
+                marginBottom: '12px' 
+              }}>
                 Current
               </div>
-              <div className="flex-1 rounded-xl bg-black border-2 border-[#e94560] flex items-center justify-center p-8 relative overflow-hidden">
+              <div style={{
+                flex: 1,
+                borderRadius: '16px',
+                backgroundColor: '#000000',
+                border: '3px solid #e94560',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '40px',
+                position: 'relative',
+                overflow: 'hidden',
+              }}>
                 {currentSlide?.sectionType && currentSlide.sectionType !== 'blank' && (
-                  <div className="absolute top-3 left-3 text-[10px] font-bold uppercase tracking-widest text-[#e94560]/60">
+                  <div style={{
+                    position: 'absolute',
+                    top: '16px',
+                    left: '20px',
+                    fontSize: '11px',
+                    fontWeight: 700,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.1em',
+                    color: 'rgba(233,69,96,0.5)',
+                  }}>
                     {currentSlide.sectionType}
                   </div>
                 )}
-                <p
-                  className="text-white text-center text-2xl leading-relaxed font-medium"
-                  style={{ textShadow: '1px 1px 4px rgba(0,0,0,0.8)' }}
-                >
+                <p style={{
+                  color: '#ffffff',
+                  textAlign: 'center',
+                  fontSize: '28px',
+                  lineHeight: 1.5,
+                  fontWeight: 500,
+                  textShadow: '2px 2px 8px rgba(0,0,0,0.8)',
+                  margin: 0,
+                }}>
                   {currentSlide?.text || 'Ready'}
                 </p>
               </div>
             </div>
 
             {/* Next slide (smaller) */}
-            <div className="flex-1 flex flex-col">
-              <div className="text-[10px] font-bold uppercase tracking-widest text-[#a0aec0]/60 mb-1.5">
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+              <div style={{ 
+                fontSize: '11px', 
+                fontWeight: 700, 
+                textTransform: 'uppercase', 
+                letterSpacing: '0.1em', 
+                color: 'rgba(160,174,192,0.5)', 
+                marginBottom: '12px' 
+              }}>
                 Next
               </div>
-              <div className="flex-1 rounded-xl bg-black/40 border border-white/10 flex items-center justify-center p-6">
-                <p className="text-white/40 text-center text-lg leading-relaxed">
+              <div style={{
+                flex: 1,
+                borderRadius: '16px',
+                backgroundColor: 'rgba(0,0,0,0.4)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '32px',
+              }}>
+                <p style={{
+                  color: 'rgba(255,255,255,0.4)',
+                  textAlign: 'center',
+                  fontSize: '20px',
+                  lineHeight: 1.5,
+                  margin: 0,
+                }}>
                   {nextPreviewText || '- End -'}
                 </p>
               </div>
@@ -183,66 +271,72 @@ export default function Presenter() {
           </div>
 
           {/* Quick controls */}
-          <div className="flex items-center justify-center gap-3">
-            <button
-              onClick={prevSlide}
-              className="px-5 py-2.5 rounded-lg bg-[#16213e] hover:bg-[#0f3460] text-white font-medium transition-colors text-sm"
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline mr-1.5"><polyline points="15 18 9 12 15 6" /></svg>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+            <button onClick={prevSlide} style={buttonStyle}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6" /></svg>
               Prev
             </button>
             <button
               onClick={handleGoLive}
-              className={`px-8 py-2.5 rounded-lg font-bold text-white transition-colors text-sm ${
-                isLive
-                  ? 'bg-green-600 hover:bg-green-500'
-                  : 'bg-[#e94560] hover:bg-[#ff6b6b]'
-              }`}
+              style={{
+                ...buttonStyle,
+                padding: '14px 36px',
+                backgroundColor: isLive ? '#22c55e' : '#e94560',
+              }}
             >
               {isLive ? 'LIVE' : 'GO LIVE'}
             </button>
             <button
               onClick={handleBlackout}
-              className="px-5 py-2.5 rounded-lg bg-black border border-white/15 hover:border-white/30 text-white font-medium transition-colors text-sm"
+              style={{
+                ...buttonStyle,
+                backgroundColor: '#000000',
+                border: '1px solid rgba(255,255,255,0.15)',
+              }}
             >
               Blackout
             </button>
-            <button
-              onClick={handleClear}
-              className="px-5 py-2.5 rounded-lg bg-[#16213e] hover:bg-[#0f3460] text-white font-medium transition-colors text-sm"
-            >
+            <button onClick={handleClear} style={buttonStyle}>
               Clear
             </button>
-            <button
-              className="px-5 py-2.5 rounded-lg bg-[#16213e] hover:bg-[#0f3460] text-white font-medium transition-colors text-sm"
-            >
+            <button style={buttonStyle}>
               Logo
             </button>
-            <button
-              onClick={nextSlide}
-              className="px-5 py-2.5 rounded-lg bg-[#16213e] hover:bg-[#0f3460] text-white font-medium transition-colors text-sm"
-            >
+            <button onClick={nextSlide} style={buttonStyle}>
               Next
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="inline ml-1.5"><polyline points="9 18 15 12 9 6" /></svg>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6" /></svg>
             </button>
           </div>
 
           {/* Slide timeline */}
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[#a0aec0]/60 mb-2">
+            <div style={{ 
+              fontSize: '11px', 
+              fontWeight: 700, 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.1em', 
+              color: 'rgba(160,174,192,0.5)', 
+              marginBottom: '12px' 
+            }}>
               Slide Sequence
             </div>
-            <div className="flex gap-1 overflow-x-auto pb-1">
+            <div style={{ display: 'flex', gap: '6px', overflowX: 'auto', paddingBottom: '8px' }}>
               {allSlides.map((slide, idx) => (
                 <button
                   key={idx}
                   onClick={() => goToLine(slide.sectionIdx, slide.lineIdx)}
-                  className={`shrink-0 px-2.5 py-1.5 rounded text-[11px] font-medium transition-colors ${
-                    idx === currentFlatIndex
-                      ? 'bg-[#e94560] text-white'
-                      : 'bg-[#16213e] text-[#a0aec0]/70 hover:bg-[#0f3460] hover:text-white'
-                  }`}
                   title={slide.text}
+                  style={{
+                    flexShrink: 0,
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    backgroundColor: idx === currentFlatIndex ? '#e94560' : '#16213e',
+                    color: idx === currentFlatIndex ? '#ffffff' : 'rgba(160,174,192,0.7)',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
                 >
                   {idx + 1}
                 </button>
@@ -252,19 +346,31 @@ export default function Presenter() {
 
           {/* Section jump */}
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-[#a0aec0]/60 mb-2">
+            <div style={{ 
+              fontSize: '11px', 
+              fontWeight: 700, 
+              textTransform: 'uppercase', 
+              letterSpacing: '0.1em', 
+              color: 'rgba(160,174,192,0.5)', 
+              marginBottom: '12px' 
+            }}>
               Sections
             </div>
-            <div className="flex flex-wrap gap-1.5">
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
               {sections.map((section, idx) => (
                 <button
                   key={idx}
                   onClick={() => goToSection(idx)}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                    idx === currentSectionIndex
-                      ? 'bg-[#e94560] text-white'
-                      : 'bg-[#16213e] text-[#a0aec0] hover:bg-[#0f3460] hover:text-white'
-                  }`}
+                  style={{
+                    padding: '10px 18px',
+                    borderRadius: '10px',
+                    fontSize: '13px',
+                    fontWeight: 600,
+                    backgroundColor: idx === currentSectionIndex ? '#e94560' : '#16213e',
+                    color: idx === currentSectionIndex ? '#ffffff' : '#a0aec0',
+                    border: 'none',
+                    cursor: 'pointer',
+                  }}
                 >
                   {section.type}
                 </button>
@@ -273,21 +379,62 @@ export default function Presenter() {
           </div>
 
           {/* Keyboard hints */}
-          <div className="flex gap-4 text-[11px] text-[#a0aec0]/60 border-t border-white/5 pt-3">
-            <span>
-              <kbd className="px-1.5 py-0.5 rounded bg-white/5 text-[#a0aec0] mr-1 text-[10px] font-mono">
+          <div style={{ 
+            display: 'flex', 
+            gap: '32px', 
+            fontSize: '12px', 
+            color: 'rgba(160,174,192,0.5)', 
+            borderTop: '1px solid rgba(255,255,255,0.05)', 
+            paddingTop: '20px' 
+          }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <kbd style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: '#a0aec0',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+              }}>
                 ← →
               </kbd>
               Navigate
             </span>
-            <span>
-              <kbd className="px-1.5 py-0.5 rounded bg-white/5 text-[#a0aec0] mr-1 text-[10px] font-mono">
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <kbd style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: '#a0aec0',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+              }}>
+                Space
+              </kbd>
+              Next
+            </span>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <kbd style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: '#a0aec0',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+              }}>
                 B
               </kbd>
               Black screen
             </span>
-            <span>
-              <kbd className="px-1.5 py-0.5 rounded bg-white/5 text-[#a0aec0] mr-1 text-[10px] font-mono">
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <kbd style={{
+                padding: '4px 10px',
+                borderRadius: '6px',
+                backgroundColor: 'rgba(255,255,255,0.05)',
+                color: '#a0aec0',
+                fontSize: '11px',
+                fontFamily: 'monospace',
+              }}>
                 Esc
               </kbd>
               Stop live
@@ -295,6 +442,13 @@ export default function Presenter() {
           </div>
         </div>
       )}
+
+      <style>{`
+        @keyframes pulse {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
+        }
+      `}</style>
     </div>
   )
 }
