@@ -4,33 +4,38 @@
   "description": "Free, open-source church presentation software",
   "main": "dist-electron/main.js",
   "scripts": {
-    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
-    "dev:vite": "vite",
-    "dev:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
-    "build": "tsc && vite build && electron-builder",
-    "build:vite": "vite build",
+    "dev": "vite",
+    "build": "vite build && electron-builder",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["church", "worship", "presentation", "lyrics", "electron"],
+  "keywords": [
+    "church",
+    "worship",
+    "presentation",
+    "lyrics",
+    "electron"
+  ],
   "author": "inno8",
   "license": "MIT",
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.2.1",
     "@types/node": "^22.15.2",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react": "^4.5.0",
+    "autoprefixer": "^10.4.27",
     "concurrently": "^9.0.1",
     "cross-env": "^7.0.3",
     "electron": "^36.3.0",
     "electron-builder": "^26.0.6",
+    "postcss": "^8.5.8",
     "typescript": "^5.8.3",
     "vite": "^6.3.4",
+    "vite-plugin-electron": "^0.29.1",
     "wait-on": "^8.0.4"
   },
   "dependencies": {
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.3",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwindcss": "^4.1.4",
@@ -47,13 +52,21 @@
       "dist-electron/**/*"
     ],
     "win": {
-      "target": ["nsis", "portable"]
+      "target": [
+        "nsis",
+        "portable"
+      ]
     },
     "mac": {
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "linux": {
-      "target": ["AppImage", "deb"]
+      "target": [
+        "AppImage",
+        "deb"
+      ]
     }
   }
 }

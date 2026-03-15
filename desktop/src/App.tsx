@@ -34,7 +34,7 @@ function App() {
 
   return (
     <div className="flex h-screen bg-[#1a1a2e]">
-      <Sidebar currentView={currentView} onViewChange={setCurrentView} />
+      <Sidebar currentView={currentView} onViewChange={(v) => setCurrentView(v)} />
       <main className="flex-1 overflow-hidden">
         {renderView()}
       </main>
