@@ -1,6 +1,64 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import { useSongStore, parseLyrics, Song } from '../stores/songStore'
 import { useScheduleStore } from '../stores/scheduleStore'
+
+// Parse a text file to extract song info
+// Supports formats:
+// - Title on first line, Author on second (if it starts with "by " or contains "Author:")
+// - Lyrics with [Verse 1], [Chorus], [Bridge] markers
+function parseTextFile(content: string, filename: string): { title: string; author: string; lyrics: string } {
+  const lines = content.trim().split('\n')
+  
+  let title = ''
+  let author = ''
+  let lyricsStart = 0
+  
+  if (lines.length > 0) {
+    // First line is usually the title
+    const firstLine = lines[0].trim()
+    
+    // Check if first line looks like a title (not a section marker)
+    if (!firstLine.match(/^\[(Verse|Chorus|Bridge|Pre-Chorus|Outro|Intro|Tag|Refrain)/i)) {
+      title = firstLine
+      lyricsStart = 1
+      
+      // Check if second line is author
+      if (lines.length > 1) {
+        const secondLine = lines[1].trim()
+        const authorMatch = secondLine.match(/^(?:by\s+|Author:\s*|Artist:\s*|Written by\s+)(.+)$/i)
+        if (authorMatch) {
+          author = authorMatch[1].trim()
+          lyricsStart = 2
+        } else if (!secondLine.match(/^\[(Verse|Chorus|Bridge|Pre-Chorus|Outro|Intro|Tag|Refrain)/i) && 
+                   !secondLine.match(/^[A-G][#b]?[m]?[\s]/) && // Not a chord line
+                   secondLine.length < 50 && // Short enough to be an author
+                   !secondLine.includes('  ')) { // Not formatted lyrics
+          // Could be an author line without prefix
+          // Only use it if the third line looks like a section marker
+          if (lines.length > 2 && lines[2].trim().match(/^\[(Verse|Chorus|Bridge|Pre-Chorus|Outro|Intro|Tag|Refrain)/i)) {
+            author = secondLine
+            lyricsStart = 2
+          }
+        }
+      }
+    }
+  }
+  
+  // If no title found, use filename (without extension)
+  if (!title) {
+    title = filename.replace(/\.(txt|text|lyrics?)$/i, '').replace(/[-_]/g, ' ')
+  }
+  
+  // Get lyrics (everything after title/author)
+  let lyrics = lines.slice(lyricsStart).join('\n').trim()
+  
+  // If lyrics don't start with a section marker, add [Verse 1]
+  if (lyrics && !lyrics.match(/^\[(Verse|Chorus|Bridge|Pre-Chorus|Outro|Intro|Tag|Refrain)/i)) {
+    lyrics = '[Verse 1]\n' + lyrics
+  }
+  
+  return { title, author, lyrics }
+}
 
 export default function Library() {
   const {
@@ -26,6 +84,52 @@ export default function Library() {
   const [newAuthor, setNewAuthor] = useState('')
   const [newLyrics, setNewLyrics] = useState('')
   const [newTags, setNewTags] = useState('')
+  
+  // File input ref for importing
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  async function handleFileImport(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = event.target.files
+    if (!files || files.length === 0) return
+    
+    let importedCount = 0
+    
+    for (const file of Array.from(files)) {
+      if (!file.name.match(/\.(txt|text|lyrics?)$/i)) {
+        continue // Skip non-text files
+      }
+      
+      try {
+        const content = await file.text()
+        const parsed = parseTextFile(content, file.name)
+        
+        const now = new Date().toISOString()
+        const newSong: Song = {
+          id: crypto.randomUUID(),
+          title: parsed.title,
+          author: parsed.author,
+          lyrics: parsed.lyrics || '[Verse 1]\nEnter lyrics here',
+          tags: [],
+          createdAt: now,
+          updatedAt: now,
+        }
+        
+        await addSong(newSong)
+        importedCount++
+      } catch (error) {
+        console.error(`Failed to import ${file.name}:`, error)
+      }
+    }
+    
+    // Reset the input so the same file can be imported again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+    
+    if (importedCount > 0) {
+      showToast(`Imported ${importedCount} song${importedCount > 1 ? 's' : ''}`)
+    }
+  }
 
   const showToast = useCallback((message: string) => {
     setToast(message)
@@ -177,6 +281,7 @@ export default function Library() {
             + Add Song
           </button>
           <button 
+            onClick={() => fileInputRef.current?.click()}
             style={{
               padding: '16px 28px',
               borderRadius: '12px',
@@ -319,19 +424,22 @@ export default function Library() {
           </div>
 
           <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
-            <button style={{ 
-              padding: '14px 20px', 
-              borderRadius: '12px', 
-              border: '1px solid rgba(255,255,255,0.1)',
-              backgroundColor: 'transparent',
-              color: '#a0aec0',
-              fontSize: '14px',
-              fontWeight: 500,
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '10px',
-            }}>
+            <button 
+              onClick={() => { setShowAddModal(false); fileInputRef.current?.click() }}
+              style={{ 
+                padding: '14px 20px', 
+                borderRadius: '12px', 
+                border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'transparent',
+                color: '#a0aec0',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}
+            >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
               Import from File
             </button>
@@ -825,6 +933,16 @@ export default function Library() {
           </div>
         </div>
       )}
+      
+      {/* Hidden file input for importing */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".txt,.text,.lyrics"
+        multiple
+        onChange={handleFileImport}
+        style={{ display: 'none' }}
+      />
     </div>
   )
 }
