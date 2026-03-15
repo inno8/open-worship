@@ -174,18 +174,72 @@ export default function Library() {
   }
 
   function AddSongModal() {
+    const inputStyle: React.CSSProperties = {
+      width: '100%',
+      padding: '16px 20px',
+      borderRadius: '14px',
+      backgroundColor: '#1a1a2e',
+      color: '#ffffff',
+      border: '1px solid rgba(255,255,255,0.1)',
+      fontSize: '15px',
+      outline: 'none',
+    }
+
+    const labelStyle: React.CSSProperties = {
+      display: 'block',
+      fontSize: '14px',
+      fontWeight: 600,
+      color: '#a0aec0',
+      marginBottom: '12px',
+    }
+
     return (
-      <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setShowAddModal(false)}>
+      <div 
+        style={{ 
+          position: 'fixed', 
+          inset: 0, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          zIndex: 50,
+          backgroundColor: 'rgba(0,0,0,0.75)' 
+        }} 
+        onClick={() => setShowAddModal(false)}
+      >
         <div 
-          className="rounded-2xl border w-[600px] max-h-[85vh] flex flex-col shadow-2xl"
-          style={{ backgroundColor: '#16213e', borderColor: 'rgba(255,255,255,0.1)' }}
+          style={{ 
+            borderRadius: '20px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            width: '640px',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: '#16213e',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-5 border-b" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-            <h3 className="text-xl font-bold text-white">Add New Song</h3>
-            <button onClick={() => setShowAddModal(false)} className="text-[#a0aec0] hover:text-white transition-colors p-2 rounded-lg hover:bg-white/10">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'space-between', 
+            padding: '28px 32px',
+            borderBottom: '1px solid rgba(255,255,255,0.1)',
+          }}>
+            <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: 0 }}>Add New Song</h3>
+            <button 
+              onClick={() => setShowAddModal(false)} 
+              style={{ 
+                background: 'none',
+                border: 'none',
+                color: '#a0aec0',
+                cursor: 'pointer',
+                padding: '10px',
+                borderRadius: '10px',
+              }}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="18" y1="6" x2="6" y2="18" />
                 <line x1="6" y1="6" x2="18" y2="18" />
               </svg>
@@ -193,86 +247,134 @@ export default function Library() {
           </div>
 
           {/* Body */}
-          <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
+          <div style={{ flex: 1, overflowY: 'auto', padding: '32px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
             <div>
-              <label className="block text-sm font-semibold text-[#a0aec0] mb-2">Title</label>
+              <label style={labelStyle}>Title</label>
               <input
                 type="text"
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 placeholder="Song title"
-                className="w-full px-4 py-3 rounded-xl text-white placeholder-[#a0aec0]/50 border focus:outline-none transition-colors"
-                style={{ backgroundColor: '#1a1a2e', borderColor: 'rgba(255,255,255,0.1)' }}
+                style={inputStyle}
                 onFocus={(e) => e.target.style.borderColor = '#e94560'}
                 onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
                 autoFocus
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[#a0aec0] mb-2">Author</label>
+              <label style={labelStyle}>Author</label>
               <input
                 type="text"
                 value={newAuthor}
                 onChange={(e) => setNewAuthor(e.target.value)}
                 placeholder="Author/Artist"
-                className="w-full px-4 py-3 rounded-xl text-white placeholder-[#a0aec0]/50 border focus:outline-none transition-colors"
-                style={{ backgroundColor: '#1a1a2e', borderColor: 'rgba(255,255,255,0.1)' }}
+                style={inputStyle}
                 onFocus={(e) => e.target.style.borderColor = '#e94560'}
                 onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[#a0aec0] mb-2">Lyrics</label>
+              <label style={labelStyle}>Lyrics</label>
               <textarea
                 value={newLyrics}
                 onChange={(e) => setNewLyrics(e.target.value)}
                 placeholder="[Verse 1]&#10;Enter lyrics with section markers..."
                 rows={10}
-                className="w-full px-4 py-3 rounded-xl text-white placeholder-[#a0aec0]/50 border focus:outline-none resize-none font-mono text-sm transition-colors"
-                style={{ backgroundColor: '#1a1a2e', borderColor: 'rgba(255,255,255,0.1)' }}
+                style={{ 
+                  ...inputStyle, 
+                  fontFamily: 'monospace', 
+                  fontSize: '14px',
+                  resize: 'none',
+                  lineHeight: 1.6,
+                }}
                 onFocus={(e) => e.target.style.borderColor = '#e94560'}
                 onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-[#a0aec0] mb-2">Tags</label>
+              <label style={labelStyle}>Tags</label>
               <input
                 type="text"
                 value={newTags}
                 onChange={(e) => setNewTags(e.target.value)}
                 placeholder="worship, hymn, contemporary (comma-separated)"
-                className="w-full px-4 py-3 rounded-xl text-white placeholder-[#a0aec0]/50 border focus:outline-none transition-colors"
-                style={{ backgroundColor: '#1a1a2e', borderColor: 'rgba(255,255,255,0.1)' }}
+                style={inputStyle}
                 onFocus={(e) => e.target.style.borderColor = '#e94560'}
                 onBlur={(e) => e.target.style.borderColor = 'rgba(255,255,255,0.1)'}
               />
             </div>
 
-            <div className="flex gap-3 pt-2">
-              <button className="px-4 py-2.5 rounded-xl border text-[#a0aec0] hover:text-white text-sm font-medium transition-all hover:bg-white/5 flex items-center gap-2" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div style={{ display: 'flex', gap: '12px', paddingTop: '8px' }}>
+              <button style={{ 
+                padding: '14px 20px', 
+                borderRadius: '12px', 
+                border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'transparent',
+                color: '#a0aec0',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 Import from File
               </button>
-              <button className="px-4 py-2.5 rounded-xl border text-[#a0aec0] hover:text-white text-sm font-medium transition-all hover:bg-white/5 flex items-center gap-2" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
+              <button style={{ 
+                padding: '14px 20px', 
+                borderRadius: '12px', 
+                border: '1px solid rgba(255,255,255,0.1)',
+                backgroundColor: 'transparent',
+                color: '#a0aec0',
+                fontSize: '14px',
+                fontWeight: 500,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+              }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>
                 Import from Google Drive
               </button>
             </div>
           </div>
 
           {/* Footer */}
-          <div className="flex justify-end gap-3 px-6 py-5 border-t" style={{ borderColor: 'rgba(255,255,255,0.1)' }}>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'flex-end', 
+            gap: '12px', 
+            padding: '24px 32px',
+            borderTop: '1px solid rgba(255,255,255,0.1)',
+          }}>
             <button
               onClick={() => setShowAddModal(false)}
-              className="px-6 py-3 rounded-xl border text-white font-semibold transition-all hover:bg-white/5"
-              style={{ borderColor: 'rgba(255,255,255,0.2)' }}
+              style={{
+                padding: '16px 28px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255,255,255,0.2)',
+                backgroundColor: 'transparent',
+                color: '#ffffff',
+                fontSize: '15px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
             >
               Cancel
             </button>
             <button
               onClick={handleSaveNew}
-              className="px-6 py-3 rounded-xl text-white font-semibold transition-all hover:opacity-90"
-              style={{ backgroundColor: '#e94560' }}
+              style={{
+                padding: '16px 28px',
+                borderRadius: '12px',
+                border: 'none',
+                backgroundColor: '#e94560',
+                color: '#ffffff',
+                fontSize: '15px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
             >
               Save Song
             </button>
@@ -284,38 +386,81 @@ export default function Library() {
 
   function DeleteDialog() {
     return (
-      <div className="fixed inset-0 flex items-center justify-center z-50" style={{ backgroundColor: 'rgba(0,0,0,0.7)' }} onClick={() => setShowDeleteDialog(false)}>
+      <div 
+        style={{ 
+          position: 'fixed', 
+          inset: 0, 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          zIndex: 50,
+          backgroundColor: 'rgba(0,0,0,0.75)' 
+        }} 
+        onClick={() => setShowDeleteDialog(false)}
+      >
         <div 
-          className="rounded-2xl border w-[420px] shadow-2xl"
-          style={{ backgroundColor: '#16213e', borderColor: 'rgba(255,255,255,0.1)' }}
+          style={{ 
+            borderRadius: '20px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            width: '440px',
+            backgroundColor: '#16213e',
+            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+          }}
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="p-8 text-center">
+          <div style={{ padding: '40px 36px 32px', textAlign: 'center' }}>
             {/* Warning icon */}
-            <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-5" style={{ backgroundColor: 'rgba(239,68,68,0.15)' }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <div style={{ 
+              width: '72px', 
+              height: '72px', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              margin: '0 auto 24px',
+              backgroundColor: 'rgba(239,68,68,0.15)',
+            }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
                 <line x1="12" y1="9" x2="12" y2="13" />
                 <line x1="12" y1="17" x2="12.01" y2="17" />
               </svg>
             </div>
-            <h3 className="text-xl font-bold text-white mb-3">Delete Song?</h3>
-            <p className="text-[#a0aec0]">
-              Are you sure you want to delete <span className="text-white font-semibold">"{selectedSong?.title}"</span>? This action cannot be undone.
+            <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: '0 0 16px' }}>Delete Song?</h3>
+            <p style={{ fontSize: '15px', color: '#a0aec0', lineHeight: 1.6, margin: 0 }}>
+              Are you sure you want to delete <span style={{ color: '#ffffff', fontWeight: 600 }}>"{selectedSong?.title}"</span>? This action cannot be undone.
             </p>
           </div>
-          <div className="flex gap-3 px-6 pb-6">
+          <div style={{ display: 'flex', gap: '12px', padding: '0 32px 32px' }}>
             <button
               onClick={() => setShowDeleteDialog(false)}
-              className="flex-1 py-3 rounded-xl border text-white font-semibold transition-all hover:bg-white/5"
-              style={{ borderColor: 'rgba(255,255,255,0.2)' }}
+              style={{
+                flex: 1,
+                padding: '16px',
+                borderRadius: '12px',
+                border: '1px solid rgba(255,255,255,0.2)',
+                backgroundColor: 'transparent',
+                color: '#ffffff',
+                fontSize: '15px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
             >
               Cancel
             </button>
             <button
               onClick={handleDelete}
-              className="flex-1 py-3 rounded-xl text-white font-semibold transition-all hover:opacity-90"
-              style={{ backgroundColor: '#ef4444' }}
+              style={{
+                flex: 1,
+                padding: '16px',
+                borderRadius: '12px',
+                border: 'none',
+                backgroundColor: '#ef4444',
+                color: '#ffffff',
+                fontSize: '15px',
+                fontWeight: 600,
+                cursor: 'pointer',
+              }}
             >
               Delete
             </button>
