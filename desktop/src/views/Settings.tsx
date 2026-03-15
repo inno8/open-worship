@@ -43,10 +43,9 @@ export default function Settings() {
   } = usePresentationStore()
 
   const [displays, setDisplays] = useState<DisplayInfo[]>([])
-  const [backendUrl, setBackendUrl] = useState('http://localhost:8000')
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'testing'>('disconnected')
   const [toast, setToast] = useState<string | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [backgroundImages, setBackgroundImages] = useState<string[]>([])
 
   const { songs } = useSongStore()
   const { schedules } = useScheduleStore()
@@ -76,23 +75,11 @@ export default function Settings() {
     loadDisplays()
   }, [])
 
-  async function testConnection() {
-    setConnectionStatus('testing')
-    try {
-      const res = await fetch(`${backendUrl}/api/`, { signal: AbortSignal.timeout(5000) })
-      setConnectionStatus(res.ok ? 'connected' : 'disconnected')
-    } catch {
-      setConnectionStatus('disconnected')
-    }
-  }
-
   function handleFontSizeChange(px: number) {
     setFontSize(`${px / 16}rem`)
   }
 
   function handleSave() {
-    // Save backend URL to localStorage
-    localStorage.setItem('openWorship_backendUrl', backendUrl)
     showToast('Settings saved')
   }
 
@@ -101,8 +88,28 @@ export default function Settings() {
     setFontFamily('inherit')
     setDefaultBackground('#000000')
     setDisplayId(null)
-    setBackendUrl('http://localhost:8000')
+    setBackgroundImages([])
     showToast('Settings reset to defaults')
+  }
+
+  function handleUploadBackground() {
+    const input = document.createElement('input')
+    input.type = 'file'
+    input.accept = 'image/*'
+    input.onchange = async (e) => {
+      const file = (e.target as HTMLInputElement).files?.[0]
+      if (!file) return
+      
+      const reader = new FileReader()
+      reader.onload = () => {
+        const dataUrl = reader.result as string
+        setBackgroundImages(prev => [...prev, dataUrl])
+        setDefaultBackground(dataUrl)
+        showToast('Background uploaded')
+      }
+      reader.readAsDataURL(file)
+    }
+    input.click()
   }
 
   async function handleExportData() {
@@ -115,7 +122,6 @@ export default function Settings() {
         fontSize,
         fontFamily,
         defaultBackground,
-        backendUrl,
       }
     }
     
@@ -139,13 +145,24 @@ export default function Settings() {
     showToast('Local data cleared. Restart the app to apply changes.')
   }
 
-  // Load backend URL from localStorage
+  // Load background images from localStorage
   useEffect(() => {
-    const savedUrl = localStorage.getItem('openWorship_backendUrl')
-    if (savedUrl) {
-      setBackendUrl(savedUrl)
+    const savedImages = localStorage.getItem('openWorship_backgroundImages')
+    if (savedImages) {
+      try {
+        setBackgroundImages(JSON.parse(savedImages))
+      } catch (e) {
+        console.error('Failed to load background images:', e)
+      }
     }
   }, [])
+
+  // Save background images to localStorage when they change
+  useEffect(() => {
+    if (backgroundImages.length > 0) {
+      localStorage.setItem('openWorship_backgroundImages', JSON.stringify(backgroundImages))
+    }
+  }, [backgroundImages])
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -297,12 +314,16 @@ export default function Settings() {
               <div style={{
                 padding: '32px',
                 borderRadius: '12px',
-                backgroundColor: '#000000',
+                backgroundColor: defaultBackground.startsWith('data:') ? undefined : defaultBackground,
+                backgroundImage: defaultBackground.startsWith('data:') ? `url(${defaultBackground})` : undefined,
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
                 border: '1px solid rgba(255,255,255,0.05)',
                 textAlign: 'center',
                 color: '#ffffff',
                 fontFamily,
                 fontSize: `${fontSizeSliderVal / 3}px`,
+                textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
               }}>
                 Preview Text
               </div>
@@ -341,10 +362,39 @@ export default function Settings() {
                   />
                 ))}
               </div>
+              {/* Uploaded images */}
+              {backgroundImages.length > 0 && (
+                <div style={{ 
+                  display: 'grid', 
+                  gridTemplateColumns: 'repeat(4, 1fr)', 
+                  gap: '12px',
+                  marginBottom: '20px'
+                }}>
+                  {backgroundImages.map((img, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setDefaultBackground(img)}
+                      style={{
+                        aspectRatio: '16/9',
+                        borderRadius: '12px',
+                        border: defaultBackground === img 
+                          ? '3px solid #e94560' 
+                          : '2px solid rgba(255,255,255,0.1)',
+                        backgroundImage: `url(${img})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        cursor: 'pointer',
+                        transition: 'border-color 0.2s',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <input
                   type="color"
-                  value={defaultBackground}
+                  value={defaultBackground.startsWith('#') ? defaultBackground : '#000000'}
                   onChange={(e) => setDefaultBackground(e.target.value)}
                   style={{
                     width: '48px',
@@ -358,69 +408,22 @@ export default function Settings() {
                 />
                 <input
                   type="text"
-                  value={defaultBackground}
+                  value={defaultBackground.startsWith('data:') ? '(Custom Image)' : defaultBackground}
                   onChange={(e) => setDefaultBackground(e.target.value)}
+                  readOnly={defaultBackground.startsWith('data:')}
                   style={{ ...inputStyle, flex: 1, fontFamily: 'monospace' }}
                 />
-                <button style={{
-                  ...buttonSecondaryStyle,
-                  backgroundColor: 'transparent',
-                  border: '1px solid rgba(255,255,255,0.15)',
-                  color: '#a0aec0',
-                }}>
-                  Upload New
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* CONNECTION */}
-          <section>
-            <h2 style={sectionTitleStyle}>Connection</h2>
-            <div style={{ 
-              backgroundColor: '#16213e', 
-              borderRadius: '16px', 
-              padding: '24px',
-              border: '1px solid rgba(255,255,255,0.05)'
-            }}>
-              <label style={labelStyle}>Backend URL</label>
-              <div style={{ display: 'flex', gap: '12px', marginBottom: '16px' }}>
-                <input
-                  type="text"
-                  value={backendUrl}
-                  onChange={(e) => setBackendUrl(e.target.value)}
-                  placeholder="http://localhost:8000"
-                  style={{ ...inputStyle, flex: 1, fontFamily: 'monospace' }}
-                />
-                <button
-                  onClick={testConnection}
-                  disabled={connectionStatus === 'testing'}
+                <button 
+                  onClick={handleUploadBackground}
                   style={{
                     ...buttonSecondaryStyle,
-                    opacity: connectionStatus === 'testing' ? 0.5 : 1,
+                    backgroundColor: 'transparent',
+                    border: '1px solid rgba(255,255,255,0.15)',
+                    color: '#a0aec0',
                   }}
                 >
-                  {connectionStatus === 'testing' ? 'Testing...' : 'Test'}
+                  Upload Image
                 </button>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{
-                  width: '10px',
-                  height: '10px',
-                  borderRadius: '50%',
-                  backgroundColor: connectionStatus === 'connected' 
-                    ? '#22c55e' 
-                    : connectionStatus === 'testing'
-                    ? '#eab308'
-                    : 'rgba(160,174,192,0.3)',
-                }} />
-                <span style={{ fontSize: '13px', color: '#a0aec0' }}>
-                  {connectionStatus === 'connected'
-                    ? 'Connected'
-                    : connectionStatus === 'testing'
-                    ? 'Testing connection...'
-                    : 'Not connected'}
-                </span>
               </div>
             </div>
           </section>

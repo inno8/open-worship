@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { persist } from 'zustand/middleware'
 import { Section } from './songStore'
 
 interface SlideData {
@@ -38,16 +39,18 @@ interface PresentationState {
   setDefaultBackground: (bg: string) => void
 }
 
-export const usePresentationStore = create<PresentationState>((set, get) => ({
-  isLive: false,
-  currentSlide: null,
-  sections: [],
-  currentSectionIndex: 0,
-  currentLineIndex: 0,
-  displayId: null,
-  fontSize: '4rem',
-  fontFamily: 'inherit',
-  defaultBackground: '#000000',
+export const usePresentationStore = create<PresentationState>()(
+  persist(
+    (set, get) => ({
+      isLive: false,
+      currentSlide: null,
+      sections: [],
+      currentSectionIndex: 0,
+      currentLineIndex: 0,
+      displayId: null,
+      fontSize: '4rem',
+      fontFamily: 'inherit',
+      defaultBackground: '#000000',
 
   setLive: (isLive) => set({ isLive }),
   
@@ -146,11 +149,22 @@ export const usePresentationStore = create<PresentationState>((set, get) => ({
     updatePresentationWindow(get().currentSlide)
   },
   
-  setDisplayId: (displayId) => set({ displayId }),
-  setFontSize: (fontSize) => set({ fontSize }),
-  setFontFamily: (fontFamily) => set({ fontFamily }),
-  setDefaultBackground: (defaultBackground) => set({ defaultBackground }),
-}))
+      setDisplayId: (displayId) => set({ displayId }),
+      setFontSize: (fontSize) => set({ fontSize }),
+      setFontFamily: (fontFamily) => set({ fontFamily }),
+      setDefaultBackground: (defaultBackground) => set({ defaultBackground }),
+    }),
+    {
+      name: 'open-worship-presentation',
+      partialize: (state) => ({
+        fontSize: state.fontSize,
+        fontFamily: state.fontFamily,
+        defaultBackground: state.defaultBackground,
+        displayId: state.displayId,
+      }),
+    }
+  )
+)
 
 // Helper to update presentation window
 function updatePresentationWindow(slideData: SlideData | null) {

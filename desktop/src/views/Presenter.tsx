@@ -9,6 +9,9 @@ export default function Presenter() {
     currentSlide,
     setLive,
     setCurrentSlide,
+    fontSize,
+    fontFamily,
+    defaultBackground,
   } = usePresentationStore()
 
   const { activeSchedule, addItem } = useScheduleStore()
@@ -659,7 +662,7 @@ export default function Presenter() {
               </div>
               <div style={{ 
                 flex: 1, 
-                backgroundColor: '#000000',
+                backgroundColor: defaultBackground,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -678,7 +681,8 @@ export default function Presenter() {
                     </div>
                     <p style={{ 
                       color: '#ffffff', 
-                      fontSize: '16px', 
+                      fontSize: `calc(${fontSize} * 0.25)`,
+                      fontFamily: fontFamily,
                       lineHeight: 1.6,
                       margin: 0,
                       textShadow: '1px 1px 4px rgba(0,0,0,0.8)',
@@ -723,7 +727,7 @@ export default function Presenter() {
               </div>
               <div style={{ 
                 flex: 1, 
-                backgroundColor: '#000000',
+                backgroundColor: defaultBackground,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -743,7 +747,8 @@ export default function Presenter() {
                     </div>
                     <p style={{ 
                       color: '#ffffff', 
-                      fontSize: '16px', 
+                      fontSize: `calc(${fontSize} * 0.25)`,
+                      fontFamily: fontFamily,
                       lineHeight: 1.6,
                       margin: 0,
                       textShadow: '1px 1px 4px rgba(0,0,0,0.8)',
