@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { usePresentationStore } from '../stores/presentationStore'
 import { useScheduleStore, ScheduleItem } from '../stores/scheduleStore'
 import { useSongStore, parseLyrics, Section, Song } from '../stores/songStore'
@@ -20,6 +20,12 @@ export default function Presenter() {
   const [selectedSongId, setSelectedSongId] = useState<string | null>(null)
   const [selectedVerseIndex, setSelectedVerseIndex] = useState<number>(0)
   const [previewSlide, setPreviewSlide] = useState<{ text: string; sectionType: string } | null>(null)
+  const [toast, setToast] = useState<string | null>(null)
+
+  const showToast = useCallback((message: string) => {
+    setToast(message)
+    setTimeout(() => setToast(null), 3000)
+  }, [])
 
   const items = activeSchedule?.items ?? []
 
@@ -102,11 +108,11 @@ export default function Presenter() {
           break
         case 'Enter':
           e.preventDefault()
-          handleGoLive()
+          handleToggleLive()
           break
         case 'Escape':
           e.preventDefault()
-          if (isLive) handleStopLive()
+          if (isLive) handleToggleLive()
           break
       }
     }
@@ -128,14 +134,34 @@ export default function Presenter() {
   }
 
   async function handleAddSongToSchedule(song: Song) {
-    if (!activeSchedule) return
+    let schedule = activeSchedule
+    
+    // Create a schedule if none exists
+    if (!schedule) {
+      const { addSchedule, setActiveSchedule } = useScheduleStore.getState()
+      const now = new Date().toISOString()
+      const newSchedule = {
+        id: crypto.randomUUID(),
+        name: 'Sunday Service',
+        date: new Date().toISOString().split('T')[0],
+        notes: '',
+        items: [],
+        createdAt: now,
+        updatedAt: now,
+      }
+      await addSchedule(newSchedule)
+      setActiveSchedule(newSchedule)
+      schedule = newSchedule
+    }
+    
     const item: ScheduleItem = {
       id: crypto.randomUUID(),
-      order: activeSchedule.items.length,
+      order: schedule.items.length,
       type: 'song',
       song,
     }
-    await addItem(activeSchedule.id, item)
+    await addItem(schedule.id, item)
+    showToast(`"${song.title}" added to schedule`)
   }
 
   function handleSelectVerse(index: number) {
@@ -184,25 +210,21 @@ export default function Presenter() {
     }
   }
 
-  async function handleGoLive() {
-    if (!isLive && window.electronAPI) {
-      await window.electronAPI.openPresentation()
-    }
-    setLive(true)
-    
-    // Push current preview to live
-    if (previewSlide) {
-      setCurrentSlide(previewSlide)
-      if (window.electronAPI) {
-        window.electronAPI.updatePresentation(previewSlide)
+  function handleToggleLive() {
+    if (isLive) {
+      // Stop live - just toggle state, OBS/NDI will stop receiving
+      setLive(false)
+    } else {
+      // Go live - start sending to OBS/NDI
+      setLive(true)
+      
+      // Push current preview to live output
+      if (previewSlide) {
+        setCurrentSlide(previewSlide)
+        if (window.electronAPI) {
+          window.electronAPI.updatePresentation(previewSlide)
+        }
       }
-    }
-  }
-
-  async function handleStopLive() {
-    setLive(false)
-    if (window.electronAPI) {
-      await window.electronAPI.closePresentation()
     }
   }
 
@@ -223,7 +245,7 @@ export default function Presenter() {
         window.electronAPI.updatePresentation(previewSlide)
       }
       if (!isLive) {
-        handleGoLive()
+        handleToggleLive()
       }
     }
   }
@@ -293,24 +315,9 @@ export default function Presenter() {
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button
-            onClick={handlePrevVerse}
-            style={{
-              padding: '8px 14px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              color: '#ffffff',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600,
-            }}
-          >
-            ← Prev
-          </button>
-          <button
             onClick={handleBlackout}
             style={{
-              padding: '8px 14px',
+              padding: '8px 16px',
               borderRadius: '8px',
               backgroundColor: '#000000',
               color: '#ffffff',
@@ -323,24 +330,9 @@ export default function Presenter() {
             Black
           </button>
           <button
-            onClick={handleNextVerse}
+            onClick={handleToggleLive}
             style={{
-              padding: '8px 14px',
-              borderRadius: '8px',
-              backgroundColor: 'rgba(255,255,255,0.05)',
-              color: '#ffffff',
-              border: 'none',
-              cursor: 'pointer',
-              fontSize: '12px',
-              fontWeight: 600,
-            }}
-          >
-            Next →
-          </button>
-          <button
-            onClick={isLive ? handleStopLive : handleGoLive}
-            style={{
-              padding: '8px 20px',
+              padding: '8px 24px',
               borderRadius: '8px',
               fontSize: '13px',
               fontWeight: 700,
@@ -348,10 +340,9 @@ export default function Presenter() {
               cursor: 'pointer',
               backgroundColor: isLive ? '#22c55e' : '#e94560',
               color: '#ffffff',
-              marginLeft: '8px',
             }}
           >
-            {isLive ? '● LIVE' : 'GO LIVE'}
+            {isLive ? '● STOP' : 'GO LIVE'}
           </button>
         </div>
       </div>
@@ -788,6 +779,37 @@ export default function Presenter() {
           </div>
         </div>
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)', zIndex: 50 }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px', 
+            padding: '14px 20px', 
+            borderRadius: '10px', 
+            border: '1px solid rgba(255,255,255,0.1)',
+            backgroundColor: '#16213e', 
+            boxShadow: '0 10px 25px rgba(0,0,0,0.3)' 
+          }}>
+            <div style={{ 
+              width: '20px', 
+              height: '20px', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              backgroundColor: 'rgba(34,197,94,0.2)' 
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <span style={{ color: '#ffffff', fontWeight: 500, fontSize: '13px' }}>{toast}</span>
+          </div>
+        </div>
+      )}
 
       <style>{`
         @keyframes pulse {
