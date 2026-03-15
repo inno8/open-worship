@@ -48,9 +48,15 @@ export default function Settings() {
 
   useEffect(() => {
     async function loadDisplays() {
-      if (window.electronAPI) {
-        const d = await window.electronAPI.getDisplays()
-        setDisplays(d)
+      if (window.electronAPI?.getDisplays) {
+        try {
+          const d = await window.electronAPI.getDisplays()
+          if (Array.isArray(d)) {
+            setDisplays(d)
+          }
+        } catch (e) {
+          console.error('Failed to get displays:', e)
+        }
       }
     }
     loadDisplays()
@@ -162,7 +168,7 @@ export default function Settings() {
                   <option value="">Auto (Primary)</option>
                   {displays.map((d) => (
                     <option key={d.id} value={d.id}>
-                      {d.label} ({d.size.width}x{d.size.height})
+                      {d.label}{d.size ? ` (${d.size.width}x${d.size.height})` : ''}
                     </option>
                   ))}
                 </select>
