@@ -1,0 +1,59 @@
+{
+  "name": "open-worship",
+  "version": "1.0.0",
+  "description": "Free, open-source church presentation software",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:vite\" \"npm run dev:electron\"",
+    "dev:vite": "vite",
+    "dev:electron": "wait-on tcp:5173 && cross-env NODE_ENV=development electron .",
+    "build": "tsc && vite build && electron-builder",
+    "build:vite": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": ["church", "worship", "presentation", "lyrics", "electron"],
+  "author": "inno8",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^22.15.2",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "@vitejs/plugin-react": "^4.5.0",
+    "concurrently": "^9.0.1",
+    "cross-env": "^7.0.3",
+    "electron": "^36.3.0",
+    "electron-builder": "^26.0.6",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.4",
+    "wait-on": "^8.0.4"
+  },
+  "dependencies": {
+    "autoprefixer": "^10.4.21",
+    "postcss": "^8.5.3",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwindcss": "^4.1.4",
+    "zustand": "^5.0.4"
+  },
+  "build": {
+    "appId": "com.inno8.openworship",
+    "productName": "Open Worship",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*"
+    ],
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "mac": {
+      "target": ["dmg"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb"]
+    }
+  }
+}
