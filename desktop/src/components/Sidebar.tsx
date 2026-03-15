@@ -82,14 +82,23 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 px-4 py-6">
-        <ul className="space-y-2">
+      <nav style={{ flex: 1, padding: '32px 20px' }}>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {menuItems.map((item) => (
             <li key={item.id}>
               <button
                 onClick={() => onViewChange(item.id)}
-                className="w-full flex items-center gap-4 px-4 py-3.5 rounded-xl text-left transition-all"
                 style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '16px',
+                  padding: '16px 20px',
+                  borderRadius: '14px',
+                  border: 'none',
+                  textAlign: 'left',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
                   backgroundColor: currentView === item.id ? '#e94560' : 'transparent',
                   color: currentView === item.id ? '#ffffff' : '#a0aec0',
                 }}
@@ -107,7 +116,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
                 }}
               >
                 {item.icon}
-                <span className="font-semibold text-[15px]">{item.label}</span>
+                <span style={{ fontWeight: 600, fontSize: '15px' }}>{item.label}</span>
               </button>
             </li>
           ))}
