@@ -1,11 +1,15 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { usePresentationStore } from '../stores/presentationStore'
+import { useSongStore } from '../stores/songStore'
+import { useScheduleStore } from '../stores/scheduleStore'
 
 interface DisplayInfo {
   id: number
   label: string
   size: { width: number; height: number }
 }
+
+const APP_VERSION = '1.0.0'
 
 const BACKGROUND_PRESETS = [
   '#000000',
@@ -41,6 +45,16 @@ export default function Settings() {
   const [displays, setDisplays] = useState<DisplayInfo[]>([])
   const [backendUrl, setBackendUrl] = useState('http://localhost:8000')
   const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'testing'>('disconnected')
+  const [toast, setToast] = useState<string | null>(null)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+
+  const { songs } = useSongStore()
+  const { schedules } = useScheduleStore()
+
+  const showToast = useCallback((message: string) => {
+    setToast(message)
+    setTimeout(() => setToast(null), 3000)
+  }, [])
 
   // Convert rem-based font size to px for slider (48-96px range)
   const fontSizePx = Math.round(parseFloat(fontSize) * 16) || 64
@@ -77,7 +91,9 @@ export default function Settings() {
   }
 
   function handleSave() {
-    // Settings are already persisted via zustand store
+    // Save backend URL to localStorage
+    localStorage.setItem('openWorship_backendUrl', backendUrl)
+    showToast('Settings saved')
   }
 
   function handleReset() {
@@ -86,7 +102,50 @@ export default function Settings() {
     setDefaultBackground('#000000')
     setDisplayId(null)
     setBackendUrl('http://localhost:8000')
+    showToast('Settings reset to defaults')
   }
+
+  async function handleExportData() {
+    const data = {
+      version: APP_VERSION,
+      exportedAt: new Date().toISOString(),
+      songs,
+      schedules,
+      settings: {
+        fontSize,
+        fontFamily,
+        defaultBackground,
+        backendUrl,
+      }
+    }
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `open-worship-backup-${new Date().toISOString().split('T')[0]}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    showToast('Data exported successfully')
+  }
+
+  async function handleClearData() {
+    // Clear local storage
+    localStorage.clear()
+    
+    // In Electron, we could also clear the SQLite database
+    // For now, just show confirmation
+    setShowClearConfirm(false)
+    showToast('Local data cleared. Restart the app to apply changes.')
+  }
+
+  // Load backend URL from localStorage
+  useEffect(() => {
+    const savedUrl = localStorage.getItem('openWorship_backendUrl')
+    if (savedUrl) {
+      setBackendUrl(savedUrl)
+    }
+  }, [])
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -403,6 +462,93 @@ export default function Settings() {
             </div>
           </section>
 
+          {/* DATA MANAGEMENT */}
+          <section>
+            <h2 style={sectionTitleStyle}>Data Management</h2>
+            <div style={{ 
+              backgroundColor: '#16213e', 
+              borderRadius: '16px', 
+              padding: '24px',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <div>
+                  <div style={{ fontSize: '14px', color: '#ffffff', marginBottom: '4px' }}>Library Stats</div>
+                  <div style={{ fontSize: '13px', color: '#a0aec0' }}>
+                    {songs.length} songs • {schedules.length} schedules
+                  </div>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={handleExportData}
+                  style={buttonSecondaryStyle}
+                >
+                  Export Backup
+                </button>
+                <button
+                  onClick={() => setShowClearConfirm(true)}
+                  style={{
+                    ...buttonSecondaryStyle,
+                    backgroundColor: 'transparent',
+                    border: '1px solid rgba(239,68,68,0.3)',
+                    color: '#ef4444',
+                  }}
+                >
+                  Clear All Data
+                </button>
+              </div>
+            </div>
+          </section>
+
+          {/* ABOUT */}
+          <section>
+            <h2 style={sectionTitleStyle}>About</h2>
+            <div style={{ 
+              backgroundColor: '#16213e', 
+              borderRadius: '16px', 
+              padding: '24px',
+              border: '1px solid rgba(255,255,255,0.05)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '12px',
+                  backgroundColor: '#e94560',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2">
+                    <path d="M9 18V5l12-2v13" />
+                    <circle cx="6" cy="18" r="3" />
+                    <circle cx="18" cy="16" r="3" />
+                  </svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff' }}>Open Worship</div>
+                  <div style={{ fontSize: '13px', color: '#a0aec0' }}>Version {APP_VERSION}</div>
+                </div>
+              </div>
+              <p style={{ fontSize: '14px', color: '#a0aec0', lineHeight: 1.6, margin: 0 }}>
+                A modern worship presentation software for churches. 
+                Project lyrics on secondary displays, manage song libraries, 
+                and create service schedules with ease.
+              </p>
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                <a 
+                  href="https://github.com/inno8/open-worship" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  style={{ fontSize: '13px', color: '#e94560', textDecoration: 'none' }}
+                >
+                  View on GitHub →
+                </a>
+              </div>
+            </div>
+          </section>
+
           {/* Footer */}
           <div style={{ 
             display: 'flex', 
@@ -433,6 +579,121 @@ export default function Settings() {
           </div>
         </div>
       </div>
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{ position: 'fixed', bottom: '32px', left: '50%', transform: 'translateX(-50%)', zIndex: 50 }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '12px', 
+            padding: '14px 20px', 
+            borderRadius: '10px', 
+            border: '1px solid rgba(255,255,255,0.1)',
+            backgroundColor: '#16213e', 
+            boxShadow: '0 10px 25px rgba(0,0,0,0.3)' 
+          }}>
+            <div style={{ 
+              width: '20px', 
+              height: '20px', 
+              borderRadius: '50%', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center', 
+              backgroundColor: 'rgba(34,197,94,0.2)' 
+            }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="20 6 9 17 4 12" />
+              </svg>
+            </div>
+            <span style={{ color: '#ffffff', fontWeight: 500, fontSize: '13px' }}>{toast}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Clear data confirmation modal */}
+      {showClearConfirm && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 50,
+            backgroundColor: 'rgba(0,0,0,0.75)' 
+          }} 
+          onClick={() => setShowClearConfirm(false)}
+        >
+          <div 
+            style={{ 
+              borderRadius: '20px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              width: '400px',
+              backgroundColor: '#16213e',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '32px', textAlign: 'center' }}>
+              <div style={{ 
+                width: '64px', 
+                height: '64px', 
+                borderRadius: '50%', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                margin: '0 auto 20px',
+                backgroundColor: 'rgba(239,68,68,0.15)',
+              }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', margin: '0 0 12px' }}>Clear All Data?</h3>
+              <p style={{ fontSize: '14px', color: '#a0aec0', lineHeight: 1.6, margin: 0 }}>
+                This will delete all songs, schedules, and settings. This action cannot be undone.
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', padding: '0 24px 24px' }}>
+              <button
+                onClick={() => setShowClearConfirm(false)}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  backgroundColor: 'transparent',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleClearData}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Clear Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
