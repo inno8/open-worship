@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { usePresentationStore } from '../stores/presentationStore'
+import { usePresentationStore, getBackgroundStyle } from '../stores/presentationStore'
 import { useSongStore } from '../stores/songStore'
 import { useScheduleStore } from '../stores/scheduleStore'
 
@@ -36,16 +36,20 @@ export default function Settings() {
     fontSize,
     fontFamily,
     defaultBackground,
+    backgrounds,
     setDisplayId,
     setFontSize,
     setFontFamily,
     setDefaultBackground,
+    loadBackgrounds,
+    addBackgrounds,
+    removeBackground,
   } = usePresentationStore()
 
   const [displays, setDisplays] = useState<DisplayInfo[]>([])
   const [toast, setToast] = useState<string | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
-  const [backgroundImages, setBackgroundImages] = useState<string[]>([])
+  const [hoveredBg, setHoveredBg] = useState<string | null>(null)
 
   const { songs } = useSongStore()
   const { schedules } = useScheduleStore()
@@ -60,7 +64,7 @@ export default function Settings() {
   const fontSizeSliderVal = Math.max(48, Math.min(96, fontSizePx))
 
   useEffect(() => {
-    async function loadDisplays() {
+    async function init() {
       if (window.electronAPI?.getDisplays) {
         try {
           const d = await window.electronAPI.getDisplays()
@@ -71,8 +75,9 @@ export default function Settings() {
           console.error('Failed to get displays:', e)
         }
       }
+      loadBackgrounds()
     }
-    loadDisplays()
+    init()
   }, [])
 
   function handleFontSizeChange(px: number) {
@@ -88,28 +93,20 @@ export default function Settings() {
     setFontFamily('inherit')
     setDefaultBackground('#000000')
     setDisplayId(null)
-    setBackgroundImages([])
     showToast('Settings reset to defaults')
   }
 
-  function handleUploadBackground() {
-    const input = document.createElement('input')
-    input.type = 'file'
-    input.accept = 'image/*'
-    input.onchange = async (e) => {
-      const file = (e.target as HTMLInputElement).files?.[0]
-      if (!file) return
-      
-      const reader = new FileReader()
-      reader.onload = () => {
-        const dataUrl = reader.result as string
-        setBackgroundImages(prev => [...prev, dataUrl])
-        setDefaultBackground(dataUrl)
-        showToast('Background uploaded')
-      }
-      reader.readAsDataURL(file)
+  async function handleAddBackground() {
+    const imported = await addBackgrounds()
+    if (imported.length > 0) {
+      setDefaultBackground(imported[0])
+      showToast(`${imported.length} background${imported.length > 1 ? 's' : ''} added`)
     }
-    input.click()
+  }
+
+  async function handleDeleteBackground(filename: string) {
+    await removeBackground(filename)
+    showToast('Background removed')
   }
 
   async function handleExportData() {
@@ -144,25 +141,6 @@ export default function Settings() {
     setShowClearConfirm(false)
     showToast('Local data cleared. Restart the app to apply changes.')
   }
-
-  // Load background images from localStorage
-  useEffect(() => {
-    const savedImages = localStorage.getItem('openWorship_backgroundImages')
-    if (savedImages) {
-      try {
-        setBackgroundImages(JSON.parse(savedImages))
-      } catch (e) {
-        console.error('Failed to load background images:', e)
-      }
-    }
-  }, [])
-
-  // Save background images to localStorage when they change
-  useEffect(() => {
-    if (backgroundImages.length > 0) {
-      localStorage.setItem('openWorship_backgroundImages', JSON.stringify(backgroundImages))
-    }
-  }, [backgroundImages])
 
   const inputStyle: React.CSSProperties = {
     width: '100%',
@@ -314,8 +292,7 @@ export default function Settings() {
               <div style={{
                 padding: '32px',
                 borderRadius: '12px',
-                backgroundColor: defaultBackground.startsWith('data:') ? undefined : defaultBackground,
-                backgroundImage: defaultBackground.startsWith('data:') ? `url(${defaultBackground})` : undefined,
+                ...getBackgroundStyle(defaultBackground),
                 backgroundSize: 'cover',
                 backgroundPosition: 'center',
                 border: '1px solid rgba(255,255,255,0.05)',
@@ -333,15 +310,16 @@ export default function Settings() {
           {/* BACKGROUNDS */}
           <section>
             <h2 style={sectionTitleStyle}>Backgrounds</h2>
-            <div style={{ 
-              backgroundColor: '#16213e', 
-              borderRadius: '16px', 
+            <div style={{
+              backgroundColor: '#16213e',
+              borderRadius: '16px',
               padding: '24px',
               border: '1px solid rgba(255,255,255,0.05)'
             }}>
-              <div style={{ 
-                display: 'grid', 
-                gridTemplateColumns: 'repeat(4, 1fr)', 
+              {/* Color presets */}
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(4, 1fr)',
                 gap: '12px',
                 marginBottom: '20px'
               }}>
@@ -352,8 +330,8 @@ export default function Settings() {
                     style={{
                       aspectRatio: '16/9',
                       borderRadius: '12px',
-                      border: defaultBackground === bg 
-                        ? '3px solid #e94560' 
+                      border: defaultBackground === bg
+                        ? '3px solid #e94560'
                         : '2px solid rgba(255,255,255,0.1)',
                       backgroundColor: bg,
                       cursor: 'pointer',
@@ -362,35 +340,88 @@ export default function Settings() {
                   />
                 ))}
               </div>
-              {/* Uploaded images */}
-              {backgroundImages.length > 0 && (
-                <div style={{ 
-                  display: 'grid', 
-                  gridTemplateColumns: 'repeat(4, 1fr)', 
+
+              {/* Uploaded background images */}
+              {backgrounds.length > 0 && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(4, 1fr)',
                   gap: '12px',
                   marginBottom: '20px'
                 }}>
-                  {backgroundImages.map((img, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setDefaultBackground(img)}
-                      style={{
-                        aspectRatio: '16/9',
-                        borderRadius: '12px',
-                        border: defaultBackground === img 
-                          ? '3px solid #e94560' 
-                          : '2px solid rgba(255,255,255,0.1)',
-                        backgroundImage: `url(${img})`,
-                        backgroundSize: 'cover',
-                        backgroundPosition: 'center',
-                        cursor: 'pointer',
-                        transition: 'border-color 0.2s',
-                      }}
-                    />
+                  {backgrounds.map((filename) => (
+                    <div
+                      key={filename}
+                      style={{ position: 'relative' }}
+                      onMouseEnter={() => setHoveredBg(filename)}
+                      onMouseLeave={() => setHoveredBg(null)}
+                    >
+                      <button
+                        onClick={() => setDefaultBackground(filename)}
+                        style={{
+                          width: '100%',
+                          aspectRatio: '16/9',
+                          borderRadius: '12px',
+                          border: defaultBackground === filename
+                            ? '3px solid #e94560'
+                            : '2px solid rgba(255,255,255,0.1)',
+                          backgroundImage: `url(app-bg:///${filename})`,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          cursor: 'pointer',
+                          transition: 'border-color 0.2s',
+                        }}
+                      />
+                      {/* Default indicator */}
+                      {defaultBackground === filename && (
+                        <div style={{
+                          position: 'absolute',
+                          bottom: '6px',
+                          left: '6px',
+                          width: '20px',
+                          height: '20px',
+                          borderRadius: '50%',
+                          backgroundColor: '#e94560',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                        }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      )}
+                      {/* Delete button on hover */}
+                      {hoveredBg === filename && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteBackground(filename) }}
+                          style={{
+                            position: 'absolute',
+                            top: '6px',
+                            right: '6px',
+                            width: '24px',
+                            height: '24px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(239,68,68,0.9)',
+                            border: 'none',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: 0,
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="18" y1="6" x2="6" y2="18" />
+                            <line x1="6" y1="6" x2="18" y2="18" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
                   ))}
                 </div>
               )}
-              
+
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <input
                   type="color"
@@ -408,13 +439,13 @@ export default function Settings() {
                 />
                 <input
                   type="text"
-                  value={defaultBackground.startsWith('data:') ? '(Custom Image)' : defaultBackground}
+                  value={defaultBackground.startsWith('#') || defaultBackground.startsWith('rgb') ? defaultBackground : '(Background Image)'}
                   onChange={(e) => setDefaultBackground(e.target.value)}
-                  readOnly={defaultBackground.startsWith('data:')}
+                  readOnly={!defaultBackground.startsWith('#') && !defaultBackground.startsWith('rgb')}
                   style={{ ...inputStyle, flex: 1, fontFamily: 'monospace' }}
                 />
-                <button 
-                  onClick={handleUploadBackground}
+                <button
+                  onClick={handleAddBackground}
                   style={{
                     ...buttonSecondaryStyle,
                     backgroundColor: 'transparent',
@@ -422,7 +453,7 @@ export default function Settings() {
                     color: '#a0aec0',
                   }}
                 >
-                  Upload Image
+                  Add Background
                 </button>
               </div>
             </div>
