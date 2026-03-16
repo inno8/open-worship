@@ -90,9 +90,10 @@ export class NdiFrameRenderer {
     const fontFamily = slide.fontFamily && slide.fontFamily !== 'inherit'
       ? slide.fontFamily
       : 'sans-serif'
-
-    ctx.font = `bold ${fontSize}px ${fontFamily}`
-    ctx.fillStyle = '#ffffff'
+    const fontWeight = slide.fontWeight ?? 400
+    // Canvas font format: [ [ font-style || font-variant || font-weight ]? font-size [ / line-height ]? font-family ]
+    ctx.font = `normal normal ${fontWeight} ${fontSize}px ${fontFamily}`
+    ctx.fillStyle = slide.textColor ?? '#ffffff'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
 

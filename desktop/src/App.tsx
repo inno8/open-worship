@@ -66,6 +66,8 @@ function PresentationWindow() {
     backgroundImage?: string
     fontSize?: string
     fontFamily?: string
+    fontWeight?: number
+    textColor?: string
     sectionType?: string
   } | null>(null)
 
@@ -118,10 +120,11 @@ function PresentationWindow() {
       <div style={{ textAlign: 'center' }}>
         <p 
           style={{
-            color: '#ffffff',
+            color: slideData.textColor || '#ffffff',
             lineHeight: 1.5,
             fontSize: slideData.fontSize || '4rem',
             fontFamily: slideData.fontFamily || 'inherit',
+            fontWeight: slideData.fontWeight ?? 400,
             textShadow: '2px 2px 8px rgba(0,0,0,0.8)',
             margin: 0,
           }}

@@ -9,6 +9,8 @@ export interface SlideData {
   backgroundImage?: string
   fontSize?: string
   fontFamily?: string
+  fontWeight?: number
+  textColor?: string
 }
 
 // Convert a background value (color string or filename) to CSS properties
@@ -34,6 +36,8 @@ interface PresentationState {
   // Settings
   fontSize: string
   fontFamily: string
+  fontWeight: number
+  textColor: string
   defaultBackground: string
   backgrounds: string[]
 
@@ -56,6 +60,8 @@ interface PresentationState {
   setDisplayId: (id: number | null) => void
   setFontSize: (size: string) => void
   setFontFamily: (family: string) => void
+  setFontWeight: (weight: number) => void
+  setTextColor: (color: string) => void
   setDefaultBackground: (bg: string) => void
   loadBackgrounds: () => Promise<void>
   addBackgrounds: () => Promise<string[]>
@@ -76,6 +82,8 @@ export const usePresentationStore = create<PresentationState>()(
       displayId: null,
       fontSize: '4rem',
       fontFamily: 'inherit',
+      fontWeight: 400,
+      textColor: '#ffffff',
       defaultBackground: '#000000',
       backgrounds: [],
       ndiEnabled: true,
@@ -95,7 +103,7 @@ export const usePresentationStore = create<PresentationState>()(
   setCurrentSlide: (currentSlide) => set({ currentSlide }),
   
   goToSection: (index) => {
-    const { sections, fontSize, fontFamily, defaultBackground } = get()
+    const { sections, fontSize, fontFamily, fontWeight, textColor, defaultBackground } = get()
     if (index >= 0 && index < sections.length) {
       const section = sections[index]
       const text = section.lines[0] || ''
@@ -109,6 +117,8 @@ export const usePresentationStore = create<PresentationState>()(
           sectionType: section.type,
           fontSize,
           fontFamily,
+          fontWeight,
+          textColor,
           ...bgStyle,
         },
       })
@@ -118,7 +128,7 @@ export const usePresentationStore = create<PresentationState>()(
   },
 
   goToLine: (sectionIndex, lineIndex) => {
-    const { sections, fontSize, fontFamily, defaultBackground } = get()
+    const { sections, fontSize, fontFamily, fontWeight, textColor, defaultBackground } = get()
     if (sectionIndex >= 0 && sectionIndex < sections.length) {
       const section = sections[sectionIndex]
       if (lineIndex >= 0 && lineIndex < section.lines.length) {
@@ -131,6 +141,8 @@ export const usePresentationStore = create<PresentationState>()(
             sectionType: section.type,
             fontSize,
             fontFamily,
+            fontWeight,
+            textColor,
             ...bgStyle,
           },
         })
@@ -184,6 +196,8 @@ export const usePresentationStore = create<PresentationState>()(
       setDisplayId: (displayId) => set({ displayId }),
       setFontSize: (fontSize) => set({ fontSize }),
       setFontFamily: (fontFamily) => set({ fontFamily }),
+      setFontWeight: (fontWeight) => set({ fontWeight }),
+      setTextColor: (textColor) => set({ textColor }),
       setDefaultBackground: (defaultBackground) => set({ defaultBackground }),
 
       loadBackgrounds: async () => {
@@ -263,6 +277,8 @@ export const usePresentationStore = create<PresentationState>()(
       partialize: (state) => ({
         fontSize: state.fontSize,
         fontFamily: state.fontFamily,
+        fontWeight: state.fontWeight,
+        textColor: state.textColor,
         defaultBackground: state.defaultBackground,
         displayId: state.displayId,
         ndiEnabled: state.ndiEnabled,

@@ -13,6 +13,8 @@ export default function Presenter() {
     setCurrentSlide,
     fontSize,
     fontFamily,
+    fontWeight,
+    textColor,
     defaultBackground,
     backgrounds,
     loadBackgrounds,
@@ -196,6 +198,8 @@ export default function Presenter() {
         sectionType: verse.type,
         fontSize,
         fontFamily,
+        fontWeight,
+        textColor,
         ...bgStyle,
       }
       setPreviewSlide(slide)
@@ -243,7 +247,7 @@ export default function Presenter() {
 
       if (previewSlide) {
         const bgStyle = getBackgroundStyle(effectiveBg)
-        const slideWithBg = { ...previewSlide, fontSize, fontFamily, ...bgStyle }
+        const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, ...bgStyle }
         setCurrentSlide(slideWithBg)
         if (window.electronAPI) {
           window.electronAPI.updatePresentation(slideWithBg)
@@ -265,7 +269,7 @@ export default function Presenter() {
   function handlePushToLive() {
     if (previewSlide) {
       const bgStyle = getBackgroundStyle(effectiveBg)
-      const slideWithBg = { ...previewSlide, fontSize, fontFamily, ...bgStyle }
+      const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, ...bgStyle }
       setCurrentSlide(slideWithBg)
       if (window.electronAPI) {
         window.electronAPI.updatePresentation(slideWithBg)
@@ -753,9 +757,10 @@ export default function Presenter() {
                       {previewSlide.sectionType}
                     </div>
                     <p style={{ 
-                      color: '#ffffff', 
+                      color: textColor, 
                       fontSize: `calc(${fontSize} * 0.25)`,
                       fontFamily: fontFamily,
+                      fontWeight,
                       lineHeight: 1.6,
                       margin: 0,
                       textShadow: '1px 1px 4px rgba(0,0,0,0.8)',
@@ -821,9 +826,10 @@ export default function Presenter() {
                       {currentSlide.sectionType}
                     </div>
                     <p style={{ 
-                      color: '#ffffff', 
+                      color: currentSlide.textColor ?? textColor, 
                       fontSize: `calc(${fontSize} * 0.25)`,
                       fontFamily: fontFamily,
+                      fontWeight: currentSlide.fontWeight ?? fontWeight,
                       lineHeight: 1.6,
                       margin: 0,
                       textShadow: '1px 1px 4px rgba(0,0,0,0.8)',

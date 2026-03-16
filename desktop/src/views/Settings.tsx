@@ -35,6 +35,8 @@ export default function Settings() {
     displayId,
     fontSize,
     fontFamily,
+    fontWeight,
+    textColor,
     defaultBackground,
     backgrounds,
     ndiEnabled,
@@ -45,6 +47,8 @@ export default function Settings() {
     setDisplayId,
     setFontSize,
     setFontFamily,
+    setFontWeight,
+    setTextColor,
     setDefaultBackground,
     loadBackgrounds,
     addBackgrounds,
@@ -67,9 +71,9 @@ export default function Settings() {
     setTimeout(() => setToast(null), 3000)
   }, [])
 
-  // Convert rem-based font size to px for slider (48-96px range)
+  // Convert rem-based font size to px for slider (8-200px range)
   const fontSizePx = Math.round(parseFloat(fontSize) * 16) || 64
-  const fontSizeSliderVal = Math.max(48, Math.min(96, fontSizePx))
+  const fontSizeSliderVal = Math.max(8, Math.min(200, fontSizePx))
 
   useEffect(() => {
     async function init() {
@@ -100,6 +104,8 @@ export default function Settings() {
   function handleReset() {
     setFontSize('4rem')
     setFontFamily('inherit')
+    setFontWeight(400)
+    setTextColor('#ffffff')
     setDefaultBackground('#000000')
     setDisplayId(null)
     setNdiEnabled(false)
@@ -131,6 +137,8 @@ export default function Settings() {
       settings: {
         fontSize,
         fontFamily,
+        fontWeight,
+        textColor,
         defaultBackground,
       }
     }
@@ -364,8 +372,8 @@ export default function Settings() {
                 <label style={labelStyle}>Font Size: {fontSizeSliderVal}px</label>
                 <input
                   type="range"
-                  min="48"
-                  max="96"
+                  min="8"
+                  max="200"
                   step="2"
                   value={fontSizeSliderVal}
                   onChange={(e) => handleFontSizeChange(Number(e.target.value))}
@@ -383,8 +391,62 @@ export default function Settings() {
                   color: 'rgba(160,174,192,0.5)',
                   marginTop: '8px'
                 }}>
-                  <span>48px</span>
-                  <span>96px</span>
+                  <span>8px</span>
+                  <span>200px</span>
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Font Weight: {fontWeight}</label>
+                <input
+                  type="range"
+                  min="100"
+                  max="900"
+                  step="100"
+                  value={fontWeight}
+                  onChange={(e) => setFontWeight(Number(e.target.value))}
+                  style={{ 
+                    width: '100%', 
+                    accentColor: '#e94560',
+                    height: '8px',
+                    borderRadius: '4px',
+                  }}
+                />
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  fontSize: '11px', 
+                  color: 'rgba(160,174,192,0.5)',
+                  marginTop: '8px'
+                }}>
+                  <span>100</span>
+                  <span>900</span>
+                </div>
+              </div>
+
+              <div>
+                <label style={labelStyle}>Text Color</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <input
+                    type="color"
+                    value={textColor}
+                    onChange={(e) => setTextColor(e.target.value)}
+                    style={{
+                      width: '48px',
+                      height: '48px',
+                      borderRadius: '12px',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      cursor: 'pointer',
+                      backgroundColor: 'transparent',
+                      padding: '2px',
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={textColor}
+                    onChange={(e) => setTextColor(e.target.value)}
+                    style={{ ...inputStyle, flex: 1, fontFamily: 'monospace' }}
+                  />
                 </div>
               </div>
 
@@ -397,8 +459,9 @@ export default function Settings() {
                 backgroundPosition: 'center',
                 border: '1px solid rgba(255,255,255,0.05)',
                 textAlign: 'center',
-                color: '#ffffff',
+                color: textColor,
                 fontFamily,
+                fontWeight,
                 fontSize: `${fontSizeSliderVal / 3}px`,
                 textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
               }}>

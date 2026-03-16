@@ -340,11 +340,16 @@ ipcMain.handle('ndi:setSourceName', (_event, name: string) => {
 
 app.whenReady().then(() => {
   // Register protocol handler for background images
+  // URL format in renderer: url(app-bg:///filename) → request.url can be app-bg:///filename or app-bg://host/path
   protocol.handle('app-bg', (request) => {
     const url = new URL(request.url)
-    const pathname = decodeURIComponent(url.pathname).replace(/^\/+/, '').replace(/\/+$/, '')
-    const safeName = path.basename(pathname)
+    console.log('[app-bg] request.url:', request.url, '| pathname:', url.pathname, '| hostname:', url.hostname)
+    const pathnamePart = decodeURIComponent(url.pathname || '').replace(/^\/+/, '').replace(/\/+$/, '').trim()
+    const hostPart = decodeURIComponent(url.hostname || '').trim()
+    const filenameRaw = pathnamePart || hostPart || ''
+    const safeName = path.basename(filenameRaw) || path.basename(pathnamePart) || path.basename(hostPart)
     const filePath = path.join(backgroundsDir, safeName)
+    console.log('[app-bg] resolved filename:', safeName, '→', filePath)
     return net.fetch(pathToFileURL(filePath).toString())
   })
 
