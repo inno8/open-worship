@@ -697,9 +697,13 @@ electron.ipcMain.handle("ndi:setSourceName", (_event, name) => {
 electron.app.whenReady().then(() => {
   electron.protocol.handle("app-bg", (request) => {
     const url$1 = new URL(request.url);
-    const pathname = decodeURIComponent(url$1.pathname).replace(/^\/+/, "").replace(/\/+$/, "");
-    const safeName = path.basename(pathname);
+    console.log("[app-bg] request.url:", request.url, "| pathname:", url$1.pathname, "| hostname:", url$1.hostname);
+    const pathnamePart = decodeURIComponent(url$1.pathname || "").replace(/^\/+/, "").replace(/\/+$/, "").trim();
+    const hostPart = decodeURIComponent(url$1.hostname || "").trim();
+    const filenameRaw = pathnamePart || hostPart || "";
+    const safeName = path.basename(filenameRaw) || path.basename(pathnamePart) || path.basename(hostPart);
     const filePath = path.join(backgroundsDir, safeName);
+    console.log("[app-bg] resolved filename:", safeName, "→", filePath);
     return electron.net.fetch(url.pathToFileURL(filePath).toString());
   });
   initDatabase();

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react'
 import { usePresentationStore, getBackgroundStyle } from '../stores/presentationStore'
 import { useSongStore } from '../stores/songStore'
 import { useScheduleStore } from '../stores/scheduleStore'
+import { useSyncStore } from '../stores/syncStore'
+import { wsSync } from '../services/WebSocketSync'
 
 interface DisplayInfo {
   id: number
@@ -65,6 +67,11 @@ export default function Settings() {
 
   const { songs } = useSongStore()
   const { schedules } = useScheduleStore()
+  const {
+    backendWsUrl,
+    connectionStatus,
+    setBackendWsUrl,
+  } = useSyncStore()
 
   const showToast = useCallback((message: string) => {
     setToast(message)
@@ -99,6 +106,12 @@ export default function Settings() {
 
   function handleSave() {
     showToast('Settings saved')
+  }
+
+  function handleReconnectWs() {
+    wsSync.disconnect()
+    wsSync.connect()
+    showToast('Reconnecting…')
   }
 
   function handleReset() {
@@ -224,6 +237,71 @@ export default function Settings() {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: '48px' }}>
           
+          {/* BACKEND SYNC */}
+          <section>
+            <h2 style={sectionTitleStyle}>Backend Sync</h2>
+            <div style={{
+              backgroundColor: '#16213e',
+              borderRadius: '16px',
+              padding: '24px',
+              border: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+            }}>
+              <div>
+                <label style={labelStyle}>Backend WebSocket URL</label>
+                <input
+                  type="text"
+                  value={backendWsUrl}
+                  onChange={(e) => setBackendWsUrl(e.target.value)}
+                  placeholder="ws://localhost:8000/ws/sync/"
+                  style={inputStyle}
+                />
+              </div>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '12px',
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '12px 16px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(255,255,255,0.03)',
+                }}>
+                  <div style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    backgroundColor:
+                      connectionStatus === 'connected'
+                        ? '#22c55e'
+                        : connectionStatus === 'connecting'
+                        ? '#f59e0b'
+                        : 'rgba(160,174,192,0.4)',
+                  }} />
+                  <span style={{ fontSize: '13px', color: '#a0aec0' }}>
+                    {connectionStatus === 'connected'
+                      ? 'Connected'
+                      : connectionStatus === 'connecting'
+                      ? 'Connecting…'
+                      : 'Disconnected'}
+                  </span>
+                </div>
+                <button
+                  onClick={handleReconnectWs}
+                  style={buttonSecondaryStyle}
+                >
+                  Reconnect
+                </button>
+              </div>
+            </div>
+          </section>
+
           {/* DISPLAY */}
           <section>
             <h2 style={sectionTitleStyle}>Display</h2>

@@ -7,6 +7,8 @@ import Settings from './views/Settings'
 import { useSongStore } from './stores/songStore'
 import { useScheduleStore } from './stores/scheduleStore'
 import { usePresentationStore } from './stores/presentationStore'
+import { registerSyncHandlers } from './services/registerSyncHandlers'
+import { wsSync } from './services/WebSocketSync'
 
 type View = 'library' | 'schedule' | 'presenter' | 'settings'
 
@@ -26,6 +28,14 @@ function App() {
     })
     usePresentationStore.getState().setNdiEnabled(true)
   }, [loadSongs, loadSchedules])
+
+  // WebSocket sync: register handlers and connect (main window only)
+  useEffect(() => {
+    if (window.location.hash === '#/presentation') return
+    registerSyncHandlers()
+    wsSync.connect()
+    return () => wsSync.disconnect()
+  }, [])
 
   // Check if this is the presentation window
   const isPresentation = window.location.hash === '#/presentation'
