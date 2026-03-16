@@ -1,6 +1,18 @@
-import { app, BrowserWindow, screen, ipcMain } from 'electron'
+import { app, BrowserWindow, screen, ipcMain, protocol, net, dialog } from 'electron'
 import path from 'path'
+import fs from 'fs'
+import { randomUUID } from 'crypto'
+import { pathToFileURL } from 'url'
 import * as db from './database'
+
+// Backgrounds directory in user data
+const backgroundsDir = path.join(app.getPath('userData'), 'backgrounds')
+
+// Register custom protocol for serving background images (must be before app.whenReady)
+protocol.registerSchemesAsPrivileged([{
+  scheme: 'app-bg',
+  privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true }
+}])
 
 // Keep a global reference of windows
 let mainWindow: BrowserWindow | null = null
@@ -236,12 +248,62 @@ ipcMain.handle('scheduleItems:reorder', (_event, scheduleId: string, itemIds: st
   return true
 })
 
+// ============ BACKGROUND IPC HANDLERS ============
+
+function ensureBackgroundsDir() {
+  if (!fs.existsSync(backgroundsDir)) {
+    fs.mkdirSync(backgroundsDir, { recursive: true })
+  }
+}
+
+ipcMain.handle('backgrounds:list', () => {
+  ensureBackgroundsDir()
+  return fs.readdirSync(backgroundsDir).filter(f => /\.(jpg|jpeg|png|webp)$/i.test(f))
+})
+
+ipcMain.handle('backgrounds:import', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp'] }]
+  })
+  if (result.canceled || result.filePaths.length === 0) return []
+
+  ensureBackgroundsDir()
+  const imported: string[] = []
+  for (const filePath of result.filePaths) {
+    const ext = path.extname(filePath)
+    const filename = `${randomUUID()}${ext}`
+    fs.copyFileSync(filePath, path.join(backgroundsDir, filename))
+    imported.push(filename)
+  }
+  return imported
+})
+
+ipcMain.handle('backgrounds:remove', (_event, filename: string) => {
+  const safeName = path.basename(filename)
+  const filePath = path.join(backgroundsDir, safeName)
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath)
+  }
+  return true
+})
+
 // ============ APP LIFECYCLE ============
 
 app.whenReady().then(() => {
+  // Register protocol handler for background images
+  protocol.handle('app-bg', (request) => {
+    const url = new URL(request.url)
+    const filename = decodeURIComponent(url.pathname).replace(/^\/+/, '')
+    const safeName = path.basename(filename)
+    const filePath = path.join(backgroundsDir, safeName)
+    return net.fetch(pathToFileURL(filePath).toString())
+  })
+
   // Initialize database
   db.initDatabase()
-  
+  ensureBackgroundsDir()
+
   createMainWindow()
 })
 

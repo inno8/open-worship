@@ -1,8 +1,10 @@
 "use strict";
 const electron = require("electron");
 const path = require("path");
-const Database = require("better-sqlite3");
 const fs = require("fs");
+const crypto = require("crypto");
+const url = require("url");
+const Database = require("better-sqlite3");
 let db = null;
 function initDatabase() {
   const userDataPath = electron.app.getPath("userData");
@@ -47,6 +49,10 @@ function initDatabase() {
     CREATE INDEX IF NOT EXISTS idx_schedule_items_schedule ON schedule_items(scheduleId);
     CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
   `);
+  const columns = db.prepare("PRAGMA table_info(songs)").all();
+  if (!columns.some((c) => c.name === "defaultBackground")) {
+    db.exec("ALTER TABLE songs ADD COLUMN defaultBackground TEXT DEFAULT NULL");
+  }
   console.log("Database initialized at:", dbPath);
 }
 function closeDatabase() {
@@ -66,8 +72,8 @@ function getSongById(id) {
 function createSong(song) {
   if (!db) throw new Error("Database not initialized");
   const stmt = db.prepare(`
-    INSERT INTO songs (id, title, author, lyrics, tags, createdAt, updatedAt)
-    VALUES (@id, @title, @author, @lyrics, @tags, @createdAt, @updatedAt)
+    INSERT INTO songs (id, title, author, lyrics, tags, defaultBackground, createdAt, updatedAt)
+    VALUES (@id, @title, @author, @lyrics, @tags, @defaultBackground, @createdAt, @updatedAt)
   `);
   stmt.run(song);
   return song;
@@ -78,8 +84,8 @@ function updateSong(id, updates) {
   if (!existing) return void 0;
   const updated = { ...existing, ...updates, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
   const stmt = db.prepare(`
-    UPDATE songs 
-    SET title = @title, author = @author, lyrics = @lyrics, tags = @tags, updatedAt = @updatedAt
+    UPDATE songs
+    SET title = @title, author = @author, lyrics = @lyrics, tags = @tags, defaultBackground = @defaultBackground, updatedAt = @updatedAt
     WHERE id = @id
   `);
   stmt.run(updated);
@@ -166,6 +172,11 @@ function reorderScheduleItems(scheduleId, itemIds) {
   });
   transaction();
 }
+const backgroundsDir = path.join(electron.app.getPath("userData"), "backgrounds");
+electron.protocol.registerSchemesAsPrivileged([{
+  scheme: "app-bg",
+  privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true }
+}]);
 let mainWindow = null;
 let presentationWindow = null;
 const isDev = process.env.NODE_ENV === "development";
@@ -353,8 +364,49 @@ electron.ipcMain.handle("scheduleItems:reorder", (_event, scheduleId, itemIds) =
   reorderScheduleItems(scheduleId, itemIds);
   return true;
 });
+function ensureBackgroundsDir() {
+  if (!fs.existsSync(backgroundsDir)) {
+    fs.mkdirSync(backgroundsDir, { recursive: true });
+  }
+}
+electron.ipcMain.handle("backgrounds:list", () => {
+  ensureBackgroundsDir();
+  return fs.readdirSync(backgroundsDir).filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f));
+});
+electron.ipcMain.handle("backgrounds:import", async () => {
+  const result = await electron.dialog.showOpenDialog({
+    properties: ["openFile", "multiSelections"],
+    filters: [{ name: "Images", extensions: ["jpg", "jpeg", "png", "webp"] }]
+  });
+  if (result.canceled || result.filePaths.length === 0) return [];
+  ensureBackgroundsDir();
+  const imported = [];
+  for (const filePath of result.filePaths) {
+    const ext = path.extname(filePath);
+    const filename = `${crypto.randomUUID()}${ext}`;
+    fs.copyFileSync(filePath, path.join(backgroundsDir, filename));
+    imported.push(filename);
+  }
+  return imported;
+});
+electron.ipcMain.handle("backgrounds:remove", (_event, filename) => {
+  const safeName = path.basename(filename);
+  const filePath = path.join(backgroundsDir, safeName);
+  if (fs.existsSync(filePath)) {
+    fs.unlinkSync(filePath);
+  }
+  return true;
+});
 electron.app.whenReady().then(() => {
+  electron.protocol.handle("app-bg", (request) => {
+    const url$1 = new URL(request.url);
+    const filename = decodeURIComponent(url$1.pathname).replace(/^\/+/, "");
+    const safeName = path.basename(filename);
+    const filePath = path.join(backgroundsDir, safeName);
+    return electron.net.fetch(url.pathToFileURL(filePath).toString());
+  });
   initDatabase();
+  ensureBackgroundsDir();
   createMainWindow();
 });
 electron.app.on("window-all-closed", () => {

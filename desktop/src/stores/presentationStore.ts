@@ -2,13 +2,25 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Section } from './songStore'
 
-interface SlideData {
+export interface SlideData {
   text: string
   sectionType: string
   backgroundColor?: string
   backgroundImage?: string
   fontSize?: string
   fontFamily?: string
+}
+
+// Convert a background value (color string or filename) to CSS properties
+export function getBackgroundStyle(bg: string): { backgroundColor?: string; backgroundImage?: string } {
+  if (!bg || bg.startsWith('#') || bg.startsWith('rgb')) {
+    return { backgroundColor: bg || '#000000' }
+  }
+  // It's a filename — use the custom protocol
+  return {
+    backgroundColor: '#000000',
+    backgroundImage: `url(app-bg:///${bg})`,
+  }
 }
 
 interface PresentationState {
@@ -18,12 +30,13 @@ interface PresentationState {
   currentSectionIndex: number
   currentLineIndex: number
   displayId: number | null
-  
+
   // Settings
   fontSize: string
   fontFamily: string
   defaultBackground: string
-  
+  backgrounds: string[]
+
   // Actions
   setLive: (live: boolean) => void
   setSections: (sections: Section[]) => void
@@ -37,6 +50,9 @@ interface PresentationState {
   setFontSize: (size: string) => void
   setFontFamily: (family: string) => void
   setDefaultBackground: (bg: string) => void
+  loadBackgrounds: () => Promise<void>
+  addBackgrounds: () => Promise<string[]>
+  removeBackground: (filename: string) => Promise<void>
 }
 
 export const usePresentationStore = create<PresentationState>()(
@@ -51,6 +67,7 @@ export const usePresentationStore = create<PresentationState>()(
       fontSize: '4rem',
       fontFamily: 'inherit',
       defaultBackground: '#000000',
+      backgrounds: [],
 
   setLive: (isLive) => set({ isLive }),
   
@@ -66,9 +83,9 @@ export const usePresentationStore = create<PresentationState>()(
     const { sections, fontSize, fontFamily, defaultBackground } = get()
     if (index >= 0 && index < sections.length) {
       const section = sections[index]
-      // Show first line of the section, not all lines
       const text = section.lines[0] || ''
-      
+      const bgStyle = getBackgroundStyle(defaultBackground)
+
       set({
         currentSectionIndex: index,
         currentLineIndex: 0,
@@ -77,20 +94,20 @@ export const usePresentationStore = create<PresentationState>()(
           sectionType: section.type,
           fontSize,
           fontFamily,
-          backgroundColor: defaultBackground,
+          ...bgStyle,
         },
       })
-      
-      // Update presentation window if open
+
       updatePresentationWindow(get().currentSlide)
     }
   },
-  
+
   goToLine: (sectionIndex, lineIndex) => {
     const { sections, fontSize, fontFamily, defaultBackground } = get()
     if (sectionIndex >= 0 && sectionIndex < sections.length) {
       const section = sections[sectionIndex]
       if (lineIndex >= 0 && lineIndex < section.lines.length) {
+        const bgStyle = getBackgroundStyle(defaultBackground)
         set({
           currentSectionIndex: sectionIndex,
           currentLineIndex: lineIndex,
@@ -99,10 +116,10 @@ export const usePresentationStore = create<PresentationState>()(
             sectionType: section.type,
             fontSize,
             fontFamily,
-            backgroundColor: defaultBackground,
+            ...bgStyle,
           },
         })
-        
+
         updatePresentationWindow(get().currentSlide)
       }
     }
@@ -153,6 +170,39 @@ export const usePresentationStore = create<PresentationState>()(
       setFontSize: (fontSize) => set({ fontSize }),
       setFontFamily: (fontFamily) => set({ fontFamily }),
       setDefaultBackground: (defaultBackground) => set({ defaultBackground }),
+
+      loadBackgrounds: async () => {
+        if (window.electronAPI?.backgrounds) {
+          const files = await window.electronAPI.backgrounds.list()
+          set({ backgrounds: files })
+        }
+      },
+
+      addBackgrounds: async () => {
+        if (window.electronAPI?.backgrounds) {
+          const imported = await window.electronAPI.backgrounds.import()
+          if (imported.length > 0) {
+            set((state) => ({ backgrounds: [...state.backgrounds, ...imported] }))
+          }
+          return imported
+        }
+        return []
+      },
+
+      removeBackground: async (filename) => {
+        if (window.electronAPI?.backgrounds) {
+          await window.electronAPI.backgrounds.remove(filename)
+          set((state) => {
+            const backgrounds = state.backgrounds.filter(f => f !== filename)
+            const updates: Partial<PresentationState> = { backgrounds }
+            // If the removed background was the default, reset to black
+            if (state.defaultBackground === filename) {
+              updates.defaultBackground = '#000000'
+            }
+            return updates
+          })
+        }
+      },
     }),
     {
       name: 'open-worship-presentation',

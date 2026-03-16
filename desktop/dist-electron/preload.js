@@ -38,5 +38,11 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
     update: (id, updates) => electron.ipcRenderer.invoke("scheduleItems:update", id, updates),
     delete: (id) => electron.ipcRenderer.invoke("scheduleItems:delete", id),
     reorder: (scheduleId, itemIds) => electron.ipcRenderer.invoke("scheduleItems:reorder", scheduleId, itemIds)
+  },
+  // ============ BACKGROUNDS ============
+  backgrounds: {
+    list: () => electron.ipcRenderer.invoke("backgrounds:list"),
+    import: () => electron.ipcRenderer.invoke("backgrounds:import"),
+    remove: (filename) => electron.ipcRenderer.invoke("backgrounds:remove", filename)
   }
 });

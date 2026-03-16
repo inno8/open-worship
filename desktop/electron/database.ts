@@ -11,6 +11,7 @@ export interface Song {
   author: string
   lyrics: string
   tags: string // JSON array
+  defaultBackground: string | null
   createdAt: string
   updatedAt: string
 }
@@ -83,6 +84,12 @@ export function initDatabase(): void {
     CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
   `)
 
+  // Migration: add defaultBackground column to songs if missing
+  const columns = db.prepare("PRAGMA table_info(songs)").all() as { name: string }[]
+  if (!columns.some(c => c.name === 'defaultBackground')) {
+    db.exec("ALTER TABLE songs ADD COLUMN defaultBackground TEXT DEFAULT NULL")
+  }
+
   console.log('Database initialized at:', dbPath)
 }
 
@@ -109,8 +116,8 @@ export function createSong(song: Song): Song {
   if (!db) throw new Error('Database not initialized')
   
   const stmt = db.prepare(`
-    INSERT INTO songs (id, title, author, lyrics, tags, createdAt, updatedAt)
-    VALUES (@id, @title, @author, @lyrics, @tags, @createdAt, @updatedAt)
+    INSERT INTO songs (id, title, author, lyrics, tags, defaultBackground, createdAt, updatedAt)
+    VALUES (@id, @title, @author, @lyrics, @tags, @defaultBackground, @createdAt, @updatedAt)
   `)
   stmt.run(song)
   return song
@@ -125,8 +132,8 @@ export function updateSong(id: string, updates: Partial<Song>): Song | undefined
   const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() }
   
   const stmt = db.prepare(`
-    UPDATE songs 
-    SET title = @title, author = @author, lyrics = @lyrics, tags = @tags, updatedAt = @updatedAt
+    UPDATE songs
+    SET title = @title, author = @author, lyrics = @lyrics, tags = @tags, defaultBackground = @defaultBackground, updatedAt = @updatedAt
     WHERE id = @id
   `)
   stmt.run(updated)

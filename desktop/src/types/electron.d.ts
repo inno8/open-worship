@@ -75,6 +75,13 @@ declare global {
         delete: (id: string) => Promise<boolean>
         reorder: (scheduleId: string, itemIds: string[]) => Promise<boolean>
       }
+
+      // Backgrounds
+      backgrounds: {
+        list: () => Promise<string[]>
+        import: () => Promise<string[]>
+        remove: (filename: string) => Promise<boolean>
+      }
     }
   }
 }

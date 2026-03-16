@@ -79,6 +79,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
     delete: (id: string) => ipcRenderer.invoke('scheduleItems:delete', id),
     reorder: (scheduleId: string, itemIds: string[]) => ipcRenderer.invoke('scheduleItems:reorder', scheduleId, itemIds),
   },
+
+  // ============ BACKGROUNDS ============
+  backgrounds: {
+    list: () => ipcRenderer.invoke('backgrounds:list') as Promise<string[]>,
+    import: () => ipcRenderer.invoke('backgrounds:import') as Promise<string[]>,
+    remove: (filename: string) => ipcRenderer.invoke('backgrounds:remove', filename) as Promise<boolean>,
+  },
 })
 
 // Type definitions are in src/types/electron.d.ts
