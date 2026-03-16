@@ -1,47 +1,61 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Sidebar from './components/Sidebar'
 import Library from './views/Library'
 import Schedule from './views/Schedule'
 import Presenter from './views/Presenter'
 import Settings from './views/Settings'
-import { useSongStore } from './stores/songStore'
-import { useScheduleStore } from './stores/scheduleStore'
-import { usePresentationStore } from './stores/presentationStore'
-import { registerSyncHandlers } from './services/registerSyncHandlers'
+import SplashScreen from './views/SplashScreen'
 import { wsSync } from './services/WebSocketSync'
 
-type View = 'library' | 'schedule' | 'presenter' | 'settings'
+type View = 'splash' | 'library' | 'schedule' | 'presenter' | 'settings'
+
+const FADE_MS = 350
 
 function App() {
-  const [currentView, setCurrentView] = useState<View>('presenter')
-  const loadSongs = useSongStore((state) => state.loadSongs)
-  const loadSchedules = useScheduleStore((state) => state.loadSchedules)
+  const [currentView, setCurrentView] = useState<View>('splash')
+  const [splashExiting, setSplashExiting] = useState(false)
+  const [mainOpacity, setMainOpacity] = useState(0)
 
-  // Load data from database on startup; auto-enable NDI; auto-load today's schedule if it exists
+  const handleSplashComplete = useCallback(() => {
+    setSplashExiting(true)
+    setTimeout(() => {
+      setCurrentView('presenter')
+      setSplashExiting(false)
+    }, FADE_MS)
+  }, [])
+
+  // Fade in main app when switching from splash
   useEffect(() => {
-    loadSongs()
-    loadSchedules().then(() => {
-      const { schedules, setActiveSchedule } = useScheduleStore.getState()
-      const today = new Date().toISOString().slice(0, 10)
-      const todaysSchedule = schedules.find((s) => s.date === today)
-      if (todaysSchedule) setActiveSchedule(todaysSchedule)
-    })
-    usePresentationStore.getState().setNdiEnabled(true)
-  }, [loadSongs, loadSchedules])
+    if (currentView !== 'splash') {
+      const id = requestAnimationFrame(() => requestAnimationFrame(() => setMainOpacity(1)))
+      return () => cancelAnimationFrame(id)
+    }
+    setMainOpacity(0)
+  }, [currentView])
 
-  // WebSocket sync: register handlers and connect (main window only)
+  // WebSocket cleanup on unmount (main window only; connect is done in SplashScreen)
   useEffect(() => {
     if (window.location.hash === '#/presentation') return
-    registerSyncHandlers()
-    wsSync.connect()
     return () => wsSync.disconnect()
   }, [])
 
-  // Check if this is the presentation window
   const isPresentation = window.location.hash === '#/presentation'
 
   if (isPresentation) {
     return <PresentationWindow />
+  }
+
+  if (currentView === 'splash') {
+    return (
+      <div
+        style={{
+          opacity: splashExiting ? 0 : 1,
+          transition: `opacity ${FADE_MS}ms ease-out`,
+        }}
+      >
+        <SplashScreen onComplete={handleSplashComplete} />
+      </div>
+    )
   }
 
   const renderView = () => {
@@ -55,13 +69,24 @@ function App() {
       case 'settings':
         return <Settings />
       default:
-        return <Library />
+        return <Presenter />
     }
   }
 
   return (
-    <div style={{ display: 'flex', height: '100vh', backgroundColor: '#1a1a2e' }}>
-      <Sidebar currentView={currentView} onViewChange={(v) => setCurrentView(v)} />
+    <div
+      style={{
+        display: 'flex',
+        height: '100vh',
+        backgroundColor: '#1a1a2e',
+        opacity: mainOpacity,
+        transition: `opacity ${FADE_MS}ms ease-in`,
+      }}
+    >
+      <Sidebar
+        currentView={currentView}
+        onViewChange={(v) => setCurrentView(v as View)}
+      />
       <main style={{ flex: 1, overflow: 'hidden' }}>
         {renderView()}
       </main>
