@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "vite build && electron-builder",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "rebuild": "electron-rebuild -f -w grandiose",
+    "postinstall": "node scripts/rebuild-ndi.js"
   },
   "keywords": [
     "church",
@@ -39,13 +41,11 @@
   },
   "dependencies": {
     "better-sqlite3": "^12.8.0",
+    "koffi": "^2.15.2",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "tailwindcss": "^4.1.4",
     "zustand": "^5.0.4"
-  },
-  "optionalDependencies": {
-    "grandiose": "^0.1.0"
   },
   "build": {
     "appId": "com.inno8.openworship",
@@ -74,5 +74,8 @@
         "deb"
       ]
     }
+  },
+  "optionalDependencies": {
+    "grandiose": "^0.0.4"
   }
 }

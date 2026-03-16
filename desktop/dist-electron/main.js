@@ -176,10 +176,25 @@ function reorderScheduleItems(scheduleId, itemIds) {
   transaction();
 }
 let grandiose = null;
-try {
-  grandiose = require("grandiose");
-} catch (err) {
-  console.warn("NDI (grandiose) not available:", err.message);
+const ndiModuleNames = ["grandiose", "ndi"];
+for (const name of ndiModuleNames) {
+  try {
+    grandiose = require(name);
+    if (grandiose && typeof grandiose.send === "function") {
+      console.log(`NDI native module loaded: ${name}`);
+      break;
+    }
+    grandiose = null;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (name === "grandiose") {
+      console.warn("Grandiose not available:", msg);
+    }
+    grandiose = null;
+  }
+}
+if (!grandiose) {
+  console.log("NDI: using mock mode (no native module). Install grandiose + NDI SDK for real output.");
 }
 class NdiOutput {
   constructor(sourceName = "Open Worship", width = 1920, height = 1080) {
@@ -188,47 +203,47 @@ class NdiOutput {
     __publicField(this, "width");
     __publicField(this, "height");
     __publicField(this, "running", false);
-    __publicField(this, "frameInterval", null);
-    __publicField(this, "lastFrame", null);
+    __publicField(this, "mockMode", false);
+    __publicField(this, "frameCount", 0);
+    __publicField(this, "lastFrameTime", 0);
     this.sourceName = sourceName;
     this.width = width;
     this.height = height;
   }
   get isAvailable() {
+    return true;
+  }
+  get isNativeAvailable() {
     return grandiose !== null;
   }
   get isRunning() {
     return this.running;
   }
   async start() {
-    if (!grandiose) {
-      console.error("NDI not available - grandiose module not loaded");
-      return false;
+    if (this.running) return true;
+    if (grandiose) {
+      try {
+        this.sender = grandiose.send({
+          name: this.sourceName,
+          clockVideo: false,
+          clockAudio: false
+        });
+        this.running = true;
+        this.mockMode = false;
+        console.log(`NDI sender started (native): "${this.sourceName}"`);
+        return true;
+      } catch (err) {
+        console.error("Failed to start native NDI sender:", err);
+        console.log("Falling back to mock mode");
+      }
     }
-    if (this.running) {
-      return true;
-    }
-    try {
-      const send = grandiose.send;
-      this.sender = send({
-        name: this.sourceName,
-        clockVideo: false,
-        clockAudio: false
-      });
-      this.running = true;
-      console.log(`NDI sender started: "${this.sourceName}"`);
-      return true;
-    } catch (err) {
-      console.error("Failed to start NDI sender:", err);
-      this.running = false;
-      return false;
-    }
+    this.running = true;
+    this.mockMode = true;
+    this.frameCount = 0;
+    console.log(`NDI sender started (mock): "${this.sourceName}"`);
+    return true;
   }
   stop() {
-    if (this.frameInterval) {
-      clearInterval(this.frameInterval);
-      this.frameInterval = null;
-    }
     if (this.sender) {
       try {
         const s = this.sender;
@@ -239,14 +254,28 @@ class NdiOutput {
       }
       this.sender = null;
     }
+    if (this.running) {
+      console.log(`NDI sender stopped (${this.mockMode ? "mock" : "native"}, ${this.frameCount} frames sent)`);
+    }
     this.running = false;
-    this.lastFrame = null;
-    console.log("NDI sender stopped");
+    this.mockMode = false;
+    this.frameCount = 0;
+    this.lastFrameTime = 0;
   }
   sendFrame(frameData) {
-    if (!this.running || !this.sender) return;
+    if (!this.running) return;
+    this.frameCount++;
+    const now = Date.now();
+    if (this.mockMode) {
+      if (now - this.lastFrameTime > 5e3) {
+        console.log(
+          `NDI mock: frame #${this.frameCount}, ${frameData.width}x${frameData.height}, ${(frameData.data.length / 1024).toFixed(0)}KB`
+        );
+        this.lastFrameTime = now;
+      }
+      return;
+    }
     try {
-      this.lastFrame = frameData;
       const sender = this.sender;
       sender.video({
         xres: frameData.width,
@@ -274,9 +303,12 @@ class NdiOutput {
   getStatus() {
     return {
       available: this.isAvailable,
+      nativeAvailable: this.isNativeAvailable,
       running: this.running,
+      mockMode: this.mockMode,
       sourceName: this.sourceName,
-      resolution: { width: this.width, height: this.height }
+      resolution: { width: this.width, height: this.height },
+      frameCount: this.frameCount
     };
   }
 }
@@ -519,7 +551,8 @@ electron.ipcMain.handle("ndi:start", async (_event, sourceName) => {
   const ndi = getNdiOutput();
   if (sourceName) ndi.setSourceName(sourceName);
   const success = await ndi.start();
-  return { success, status: ndi.getStatus() };
+  const status = ndi.getStatus();
+  return { success, status };
 });
 electron.ipcMain.handle("ndi:stop", () => {
   getNdiOutput().stop();
@@ -529,7 +562,7 @@ electron.ipcMain.handle("ndi:sendFrame", (_event, frameData) => {
   const ndi = getNdiOutput();
   if (!ndi.isRunning) return { success: false, reason: "NDI not running" };
   ndi.sendFrame({
-    data: Buffer.from(frameData.data),
+    data: Buffer.from(frameData.data.buffer, frameData.data.byteOffset, frameData.data.byteLength),
     width: frameData.width,
     height: frameData.height
   });

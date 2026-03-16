@@ -1,10 +1,4 @@
-let grandiose: typeof import('grandiose') | null = null
-
-try {
-  grandiose = require('grandiose')
-} catch {
-  // grandiose not available — will use mock mode
-}
+import { NdiSender, isNdiAvailable } from './NdiKoffi'
 
 export interface NdiFrameData {
   data: Buffer
@@ -13,15 +7,11 @@ export interface NdiFrameData {
 }
 
 /**
- * NDI output sender. When grandiose is available it sends real NDI frames.
- * When not available, operates in mock mode so the rest of the pipeline
- * (Settings UI, frame capture, IPC) can be developed and tested.
- *
- * To swap in the real implementation later, just ensure `grandiose` loads
- * successfully — the class adapts automatically.
+ * NDI output sender. Uses koffi to call NDI Runtime DLLs directly.
+ * Falls back to mock mode if NDI Runtime is not installed.
  */
 export class NdiOutput {
-  private sender: unknown = null
+  private sender: NdiSender | null = null
   private sourceName: string
   private width: number
   private height: number
@@ -29,20 +19,21 @@ export class NdiOutput {
   private mockMode = false
   private frameCount = 0
   private lastFrameTime = 0
+  private ndiAvailable: boolean
 
   constructor(sourceName = 'Open Worship', width = 1920, height = 1080) {
     this.sourceName = sourceName
     this.width = width
     this.height = height
+    this.ndiAvailable = isNdiAvailable()
   }
 
   get isAvailable(): boolean {
-    // Available in both real and mock mode so the UI pipeline works
-    return true
+    return true // Always available (mock mode as fallback)
   }
 
   get isNativeAvailable(): boolean {
-    return grandiose !== null
+    return this.ndiAvailable
   }
 
   get isRunning(): boolean {
@@ -52,21 +43,23 @@ export class NdiOutput {
   async start(): Promise<boolean> {
     if (this.running) return true
 
-    if (grandiose) {
+    if (this.ndiAvailable) {
       try {
-        const send = grandiose.send as unknown as (opts: Record<string, unknown>) => unknown
-        this.sender = send({
-          name: this.sourceName,
-          clockVideo: false,
-          clockAudio: false,
-        })
-        this.running = true
-        this.mockMode = false
-        console.log(`NDI sender started (native): "${this.sourceName}"`)
-        return true
+        this.sender = new NdiSender(this.sourceName)
+        const started = this.sender.start()
+        
+        if (started) {
+          this.running = true
+          this.mockMode = false
+          console.log(`NDI sender started (native): "${this.sourceName}"`)
+          return true
+        } else {
+          console.log('Failed to start native NDI, falling back to mock mode')
+          this.sender = null
+        }
       } catch (err) {
-        console.error('Failed to start native NDI sender:', err)
-        console.log('Falling back to mock mode')
+        console.error('Error starting native NDI sender:', err)
+        this.sender = null
       }
     }
 
@@ -81,11 +74,9 @@ export class NdiOutput {
   stop(): void {
     if (this.sender) {
       try {
-        const s = this.sender as { dispose?: () => void; destroy?: () => void }
-        if (typeof s.dispose === 'function') s.dispose()
-        else if (typeof s.destroy === 'function') s.destroy()
+        this.sender.stop()
       } catch (err) {
-        console.warn('Error disposing NDI sender:', err)
+        console.warn('Error stopping NDI sender:', err)
       }
       this.sender = null
     }
@@ -120,19 +111,8 @@ export class NdiOutput {
     }
 
     // Real NDI sender
-    try {
-      const sender = this.sender as { video: (frame: Record<string, unknown>) => void }
-      sender.video({
-        xres: frameData.width,
-        yres: frameData.height,
-        fourCC: (grandiose as Record<string, unknown>).FOURCC_RGBA ?? 'RGBA',
-        frameRateN: 30000,
-        frameRateD: 1001,
-        lineStrideBytes: frameData.width * 4,
-        data: frameData.data,
-      })
-    } catch (err) {
-      console.error('Failed to send NDI frame:', err)
+    if (this.sender) {
+      this.sender.sendFrame(frameData.data, frameData.width, frameData.height)
     }
   }
 
