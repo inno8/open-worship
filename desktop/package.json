@@ -6,6 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && electron-builder",
+    "dist": "vite build && electron-builder --win --mac --linux",
+    "dist:win": "vite build && electron-builder --win",
+    "dist:mac": "vite build && electron-builder --mac",
+    "dist:linux": "vite build && electron-builder --linux",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
     "rebuild": "electron-rebuild -f -w grandiose",
@@ -55,24 +59,34 @@
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*"
+      "dist-electron/**/*",
+      "node_modules/**/*"
     ],
     "win": {
-      "target": [
-        "nsis",
-        "portable"
-      ]
+      "target": ["nsis", "zip"],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
     },
     "mac": {
-      "target": [
-        "dmg"
-      ]
+      "target": ["dmg"],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities"
     },
     "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ]
+      "target": ["AppImage", "deb"],
+      "icon": "build/icons",
+      "category": "Utility"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "inno8",
+      "repo": "open-worship"
     }
   },
   "optionalDependencies": {

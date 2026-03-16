@@ -1,57 +1,97 @@
-# Task: Splash Screen with Pre-checks (#15)
+# Task: Downloadable Installers (#16)
 
 ## Overview
-Create a splash screen that shows when the app opens, runs pre-checks, then transitions to Presenter.
+Configure electron-builder to create installers for Windows, macOS, and Linux.
 
-## Splash Screen Design
-- Centered layout
-- App logo (use a placeholder text logo for now: "Open Worship" in stylized text)
-- App name below logo
-- Loading spinner/progress indicator
-- Status text showing current pre-check step
-- Dark theme (#1a1a2e background)
+## Build Targets
 
-## Pre-checks to Run
-1. Initialize database (already done)
-2. Enable NDI output
-3. Load today's schedule (if exists)
-4. Connect WebSocket to backend (if URL configured)
-5. Any other startup tasks
+### Windows
+- NSIS installer (.exe)
+- Portable (.zip)
+
+### macOS  
+- DMG installer
+
+### Linux
+- AppImage
+- .deb package
 
 ## Implementation
 
-### Create SplashScreen.tsx
-```typescript
-// desktop/src/views/SplashScreen.tsx
-- Show logo + name + spinner
-- Display status messages as checks run
-- When complete, call onComplete callback
+### 1. Update package.json build config
+```json
+{
+  "build": {
+    "appId": "com.inno8.openworship",
+    "productName": "Open Worship",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "node_modules/**/*"
+    ],
+    "win": {
+      "target": ["nsis", "zip"],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    },
+    "mac": {
+      "target": ["dmg"],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.utilities"
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "build/icons",
+      "category": "Utility"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "inno8",
+      "repo": "open-worship"
+    }
+  }
+}
 ```
 
-### Update App.tsx
-```typescript
-- Add 'splash' to view state
-- Start with view = 'splash'
-- SplashScreen runs pre-checks
-- On complete, transition to 'presenter'
-- Move startup logic from useEffect to SplashScreen
-```
+### 2. Create App Icons
+Create placeholder icons in desktop/build/:
+- icon.ico (Windows) - 256x256
+- icon.icns (macOS)
+- icons/ folder with PNGs for Linux (16x16, 32x32, 48x48, 64x64, 128x128, 256x256, 512x512)
 
-### Smooth Transition
-- Fade out splash
-- Fade in main app
-- Use CSS transitions or simple opacity change
+For now, create a simple placeholder or use a text-based icon generator.
+
+### 3. Create GitHub Actions Workflow
+Create .github/workflows/release.yml:
+- Trigger on push to 'release' branch or tag
+- Build for all platforms (using matrix)
+- Upload artifacts to GitHub Releases
+
+### 4. Fix Current Build Issues
+The current Windows build fails on symlink errors. 
+- Add to package.json scripts: "dist": "vite build && electron-builder --win --mac --linux"
+- Or separate: "dist:win", "dist:mac", "dist:linux"
 
 ## Files to Create/Modify
-- `desktop/src/views/SplashScreen.tsx` - New splash screen component
-- `desktop/src/App.tsx` - Add splash view and startup flow
+- desktop/package.json - build config
+- desktop/build/icon.ico - Windows icon
+- desktop/build/icon.icns - macOS icon  
+- desktop/build/icons/ - Linux icons
+- .github/workflows/release.yml - CI/CD
 
 ## Acceptance Criteria
-- [ ] Splash screen shows on app launch
-- [ ] Logo and app name displayed
-- [ ] Loading indicator visible
-- [ ] Status text updates during pre-checks
-- [ ] NDI auto-enabled during splash
-- [ ] Today's schedule auto-loaded
-- [ ] Smooth transition to Presenter when done
-- [ ] No flash of other views during startup
+- [ ] electron-builder config complete
+- [ ] App icons created (placeholder OK)
+- [ ] Windows NSIS build works
+- [ ] macOS DMG build config ready
+- [ ] Linux AppImage/deb config ready
+- [ ] GitHub Actions workflow created
