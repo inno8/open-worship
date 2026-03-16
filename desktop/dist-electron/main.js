@@ -1,4 +1,7 @@
 "use strict";
+var __defProp = Object.defineProperty;
+var __defNormalProp = (obj, key, value) => key in obj ? __defProp(obj, key, { enumerable: true, configurable: true, writable: true, value }) : obj[key] = value;
+var __publicField = (obj, key, value) => __defNormalProp(obj, typeof key !== "symbol" ? key + "" : key, value);
 const electron = require("electron");
 const path = require("path");
 const fs = require("fs");
@@ -171,6 +174,118 @@ function reorderScheduleItems(scheduleId, itemIds) {
     });
   });
   transaction();
+}
+let grandiose = null;
+try {
+  grandiose = require("grandiose");
+} catch (err) {
+  console.warn("NDI (grandiose) not available:", err.message);
+}
+class NdiOutput {
+  constructor(sourceName = "Open Worship", width = 1920, height = 1080) {
+    __publicField(this, "sender", null);
+    __publicField(this, "sourceName");
+    __publicField(this, "width");
+    __publicField(this, "height");
+    __publicField(this, "running", false);
+    __publicField(this, "frameInterval", null);
+    __publicField(this, "lastFrame", null);
+    this.sourceName = sourceName;
+    this.width = width;
+    this.height = height;
+  }
+  get isAvailable() {
+    return grandiose !== null;
+  }
+  get isRunning() {
+    return this.running;
+  }
+  async start() {
+    if (!grandiose) {
+      console.error("NDI not available - grandiose module not loaded");
+      return false;
+    }
+    if (this.running) {
+      return true;
+    }
+    try {
+      const send = grandiose.send;
+      this.sender = send({
+        name: this.sourceName,
+        clockVideo: false,
+        clockAudio: false
+      });
+      this.running = true;
+      console.log(`NDI sender started: "${this.sourceName}"`);
+      return true;
+    } catch (err) {
+      console.error("Failed to start NDI sender:", err);
+      this.running = false;
+      return false;
+    }
+  }
+  stop() {
+    if (this.frameInterval) {
+      clearInterval(this.frameInterval);
+      this.frameInterval = null;
+    }
+    if (this.sender) {
+      try {
+        const s = this.sender;
+        if (typeof s.dispose === "function") s.dispose();
+        else if (typeof s.destroy === "function") s.destroy();
+      } catch (err) {
+        console.warn("Error disposing NDI sender:", err);
+      }
+      this.sender = null;
+    }
+    this.running = false;
+    this.lastFrame = null;
+    console.log("NDI sender stopped");
+  }
+  sendFrame(frameData) {
+    if (!this.running || !this.sender) return;
+    try {
+      this.lastFrame = frameData;
+      const sender = this.sender;
+      sender.video({
+        xres: frameData.width,
+        yres: frameData.height,
+        fourCC: grandiose.FOURCC_RGBA ?? "RGBA",
+        frameRateN: 3e4,
+        frameRateD: 1001,
+        lineStrideBytes: frameData.width * 4,
+        data: frameData.data
+      });
+    } catch (err) {
+      console.error("Failed to send NDI frame:", err);
+    }
+  }
+  setSourceName(name) {
+    const wasRunning = this.running;
+    if (wasRunning) this.stop();
+    this.sourceName = name;
+    if (wasRunning) this.start();
+  }
+  setResolution(width, height) {
+    this.width = width;
+    this.height = height;
+  }
+  getStatus() {
+    return {
+      available: this.isAvailable,
+      running: this.running,
+      sourceName: this.sourceName,
+      resolution: { width: this.width, height: this.height }
+    };
+  }
+}
+let instance = null;
+function getNdiOutput() {
+  if (!instance) {
+    instance = new NdiOutput();
+  }
+  return instance;
 }
 const backgroundsDir = path.join(electron.app.getPath("userData"), "backgrounds");
 electron.protocol.registerSchemesAsPrivileged([{
@@ -397,6 +512,33 @@ electron.ipcMain.handle("backgrounds:remove", (_event, filename) => {
   }
   return true;
 });
+electron.ipcMain.handle("ndi:getStatus", () => {
+  return getNdiOutput().getStatus();
+});
+electron.ipcMain.handle("ndi:start", async (_event, sourceName) => {
+  const ndi = getNdiOutput();
+  if (sourceName) ndi.setSourceName(sourceName);
+  const success = await ndi.start();
+  return { success, status: ndi.getStatus() };
+});
+electron.ipcMain.handle("ndi:stop", () => {
+  getNdiOutput().stop();
+  return { success: true };
+});
+electron.ipcMain.handle("ndi:sendFrame", (_event, frameData) => {
+  const ndi = getNdiOutput();
+  if (!ndi.isRunning) return { success: false, reason: "NDI not running" };
+  ndi.sendFrame({
+    data: Buffer.from(frameData.data),
+    width: frameData.width,
+    height: frameData.height
+  });
+  return { success: true };
+});
+electron.ipcMain.handle("ndi:setSourceName", (_event, name) => {
+  getNdiOutput().setSourceName(name);
+  return { success: true };
+});
 electron.app.whenReady().then(() => {
   electron.protocol.handle("app-bg", (request) => {
     const url$1 = new URL(request.url);
@@ -410,6 +552,7 @@ electron.app.whenReady().then(() => {
   createMainWindow();
 });
 electron.app.on("window-all-closed", () => {
+  getNdiOutput().stop();
   closeDatabase();
   if (process.platform !== "darwin") {
     electron.app.quit();

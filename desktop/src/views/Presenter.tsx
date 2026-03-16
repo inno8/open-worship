@@ -2,8 +2,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { usePresentationStore, getBackgroundStyle } from '../stores/presentationStore'
 import { useScheduleStore, ScheduleItem } from '../stores/scheduleStore'
 import { useSongStore, parseLyrics, Section, Song } from '../stores/songStore'
+import { useNdiOutput } from '../ndi/useNdiOutput'
 
 export default function Presenter() {
+  useNdiOutput()
   const {
     isLive,
     currentSlide,
@@ -14,6 +16,9 @@ export default function Presenter() {
     defaultBackground,
     backgrounds,
     loadBackgrounds,
+    ndiEnabled,
+    ndiRunning,
+    ndiMockMode,
   } = usePresentationStore()
 
   const { activeSchedule, addItem } = useScheduleStore()
@@ -333,6 +338,32 @@ export default function Presenter() {
               {isLive ? 'LIVE' : 'OFF AIR'}
             </span>
           </div>
+          {ndiEnabled && ndiRunning && (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              padding: '3px 10px',
+              borderRadius: '6px',
+              backgroundColor: ndiMockMode ? 'rgba(245,158,11,0.15)' : 'rgba(34,197,94,0.15)',
+              border: `1px solid ${ndiMockMode ? 'rgba(245,158,11,0.3)' : 'rgba(34,197,94,0.3)'}`,
+            }}>
+              <div style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                backgroundColor: ndiMockMode ? '#f59e0b' : '#22c55e',
+              }} />
+              <span style={{
+                fontSize: '10px',
+                fontWeight: 700,
+                color: ndiMockMode ? '#f59e0b' : '#22c55e',
+                letterSpacing: '0.05em',
+              }}>
+                NDI{ndiMockMode ? ' MOCK' : ''}
+              </span>
+            </div>
+          )}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <button

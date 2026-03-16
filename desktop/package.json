@@ -44,6 +44,9 @@
     "tailwindcss": "^4.1.4",
     "zustand": "^5.0.4"
   },
+  "optionalDependencies": {
+    "grandiose": "^0.1.0"
+  },
   "build": {
     "appId": "com.inno8.openworship",
     "productName": "Open Worship",

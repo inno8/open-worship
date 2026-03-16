@@ -37,6 +37,13 @@ interface PresentationState {
   defaultBackground: string
   backgrounds: string[]
 
+  // NDI
+  ndiEnabled: boolean
+  ndiSourceName: string
+  ndiRunning: boolean
+  ndiAvailable: boolean
+  ndiMockMode: boolean
+
   // Actions
   setLive: (live: boolean) => void
   setSections: (sections: Section[]) => void
@@ -53,6 +60,9 @@ interface PresentationState {
   loadBackgrounds: () => Promise<void>
   addBackgrounds: () => Promise<string[]>
   removeBackground: (filename: string) => Promise<void>
+  setNdiEnabled: (enabled: boolean) => void
+  setNdiSourceName: (name: string) => void
+  refreshNdiStatus: () => Promise<void>
 }
 
 export const usePresentationStore = create<PresentationState>()(
@@ -68,6 +78,11 @@ export const usePresentationStore = create<PresentationState>()(
       fontFamily: 'inherit',
       defaultBackground: '#000000',
       backgrounds: [],
+      ndiEnabled: false,
+      ndiSourceName: 'Open Worship',
+      ndiRunning: false,
+      ndiAvailable: false,
+      ndiMockMode: false,
 
   setLive: (isLive) => set({ isLive }),
   
@@ -195,11 +210,47 @@ export const usePresentationStore = create<PresentationState>()(
           set((state) => {
             const backgrounds = state.backgrounds.filter(f => f !== filename)
             const updates: Partial<PresentationState> = { backgrounds }
-            // If the removed background was the default, reset to black
             if (state.defaultBackground === filename) {
               updates.defaultBackground = '#000000'
             }
             return updates
+          })
+        }
+      },
+
+      setNdiEnabled: (ndiEnabled) => {
+        set({ ndiEnabled })
+        if (window.electronAPI?.ndi) {
+          if (ndiEnabled) {
+            const { ndiSourceName } = get()
+            window.electronAPI.ndi.start(ndiSourceName).then((result) => {
+              set({
+                ndiRunning: result.success,
+                ndiMockMode: result.status?.mockMode ?? false,
+              })
+            })
+          } else {
+            window.electronAPI.ndi.stop().then(() => {
+              set({ ndiRunning: false, ndiMockMode: false })
+            })
+          }
+        }
+      },
+
+      setNdiSourceName: (ndiSourceName) => {
+        set({ ndiSourceName })
+        if (window.electronAPI?.ndi) {
+          window.electronAPI.ndi.setSourceName(ndiSourceName)
+        }
+      },
+
+      refreshNdiStatus: async () => {
+        if (window.electronAPI?.ndi) {
+          const status = await window.electronAPI.ndi.getStatus()
+          set({
+            ndiAvailable: status.available,
+            ndiRunning: status.running,
+            ndiMockMode: status.mockMode ?? false,
           })
         }
       },
@@ -211,6 +262,8 @@ export const usePresentationStore = create<PresentationState>()(
         fontFamily: state.fontFamily,
         defaultBackground: state.defaultBackground,
         displayId: state.displayId,
+        ndiEnabled: state.ndiEnabled,
+        ndiSourceName: state.ndiSourceName,
       }),
     }
   )

@@ -86,6 +86,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
     import: () => ipcRenderer.invoke('backgrounds:import') as Promise<string[]>,
     remove: (filename: string) => ipcRenderer.invoke('backgrounds:remove', filename) as Promise<boolean>,
   },
+
+  // ============ NDI ============
+  ndi: {
+    getStatus: () => ipcRenderer.invoke('ndi:getStatus'),
+    start: (sourceName?: string) => ipcRenderer.invoke('ndi:start', sourceName),
+    stop: () => ipcRenderer.invoke('ndi:stop'),
+    sendFrame: (frameData: { data: Uint8Array; width: number; height: number }) =>
+      ipcRenderer.invoke('ndi:sendFrame', frameData),
+    setSourceName: (name: string) => ipcRenderer.invoke('ndi:setSourceName', name),
+  },
 })
 
 // Type definitions are in src/types/electron.d.ts

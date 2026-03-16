@@ -37,6 +37,11 @@ export default function Settings() {
     fontFamily,
     defaultBackground,
     backgrounds,
+    ndiEnabled,
+    ndiSourceName,
+    ndiRunning,
+    ndiAvailable,
+    ndiMockMode,
     setDisplayId,
     setFontSize,
     setFontFamily,
@@ -44,6 +49,9 @@ export default function Settings() {
     loadBackgrounds,
     addBackgrounds,
     removeBackground,
+    setNdiEnabled,
+    setNdiSourceName,
+    refreshNdiStatus,
   } = usePresentationStore()
 
   const [displays, setDisplays] = useState<DisplayInfo[]>([])
@@ -76,6 +84,7 @@ export default function Settings() {
         }
       }
       loadBackgrounds()
+      refreshNdiStatus()
     }
     init()
   }, [])
@@ -93,6 +102,8 @@ export default function Settings() {
     setFontFamily('inherit')
     setDefaultBackground('#000000')
     setDisplayId(null)
+    setNdiEnabled(false)
+    setNdiSourceName('Open Worship')
     showToast('Settings reset to defaults')
   }
 
@@ -227,6 +238,93 @@ export default function Settings() {
                   ))}
                 </select>
                 <button style={buttonSecondaryStyle}>Preview</button>
+              </div>
+            </div>
+          </section>
+
+          {/* NDI OUTPUT */}
+          <section>
+            <h2 style={sectionTitleStyle}>NDI Output</h2>
+            <div style={{ 
+              backgroundColor: '#16213e', 
+              borderRadius: '16px', 
+              padding: '24px',
+              border: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div>
+                  <div style={{ fontSize: '14px', color: '#ffffff', marginBottom: '4px' }}>Enable NDI Output</div>
+                  <div style={{ fontSize: '13px', color: '#a0aec0' }}>
+                    Stream lyrics to OBS via NDI with transparency
+                  </div>
+                </div>
+                <button
+                  onClick={() => setNdiEnabled(!ndiEnabled)}
+                  style={{
+                    width: '48px',
+                    height: '26px',
+                    borderRadius: '13px',
+                    border: 'none',
+                    cursor: 'pointer',
+                    backgroundColor: ndiEnabled ? '#22c55e' : 'rgba(160,174,192,0.3)',
+                    position: 'relative',
+                    transition: 'background-color 0.2s',
+                  }}
+                >
+                  <div style={{
+                    width: '20px',
+                    height: '20px',
+                    borderRadius: '50%',
+                    backgroundColor: '#ffffff',
+                    position: 'absolute',
+                    top: '3px',
+                    left: ndiEnabled ? '25px' : '3px',
+                    transition: 'left 0.2s',
+                  }} />
+                </button>
+              </div>
+
+              <div>
+                <label style={labelStyle}>NDI Source Name</label>
+                <input
+                  type="text"
+                  value={ndiSourceName}
+                  onChange={(e) => setNdiSourceName(e.target.value)}
+                  placeholder="Open Worship"
+                  style={inputStyle}
+                />
+              </div>
+
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '10px',
+                padding: '12px 16px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(255,255,255,0.03)',
+              }}>
+                <div style={{
+                  width: '10px',
+                  height: '10px',
+                  borderRadius: '50%',
+                  backgroundColor: !ndiAvailable
+                    ? '#ef4444'
+                    : ndiRunning
+                    ? (ndiMockMode ? '#f59e0b' : '#22c55e')
+                    : 'rgba(160,174,192,0.4)',
+                }} />
+                <span style={{ fontSize: '13px', color: '#a0aec0' }}>
+                  {!ndiAvailable
+                    ? 'NDI not available (install NDI SDK)'
+                    : ndiRunning && ndiMockMode
+                    ? `Mock mode — pipeline active as "${ndiSourceName}" (install NDI SDK for real output)`
+                    : ndiRunning
+                    ? `Broadcasting as "${ndiSourceName}"`
+                    : 'NDI ready — enable to start'}
+                </span>
               </div>
             </div>
           </section>

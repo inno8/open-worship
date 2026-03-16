@@ -44,5 +44,13 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
     list: () => electron.ipcRenderer.invoke("backgrounds:list"),
     import: () => electron.ipcRenderer.invoke("backgrounds:import"),
     remove: (filename) => electron.ipcRenderer.invoke("backgrounds:remove", filename)
+  },
+  // ============ NDI ============
+  ndi: {
+    getStatus: () => electron.ipcRenderer.invoke("ndi:getStatus"),
+    start: (sourceName) => electron.ipcRenderer.invoke("ndi:start", sourceName),
+    stop: () => electron.ipcRenderer.invoke("ndi:stop"),
+    sendFrame: (frameData) => electron.ipcRenderer.invoke("ndi:sendFrame", frameData),
+    setSourceName: (name) => electron.ipcRenderer.invoke("ndi:setSourceName", name)
   }
 });

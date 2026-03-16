@@ -82,6 +82,29 @@ declare global {
         import: () => Promise<string[]>
         remove: (filename: string) => Promise<boolean>
       }
+
+      // NDI output
+      ndi: {
+        getStatus: () => Promise<{
+          available: boolean
+          nativeAvailable: boolean
+          running: boolean
+          mockMode: boolean
+          sourceName: string
+          resolution: { width: number; height: number }
+          frameCount: number
+        }>
+        start: (sourceName?: string) => Promise<{
+          success: boolean
+          status: { available: boolean; running: boolean; sourceName: string; mockMode: boolean }
+        }>
+        stop: () => Promise<{ success: boolean }>
+        sendFrame: (frameData: { data: Uint8Array; width: number; height: number }) => Promise<{
+          success: boolean
+          reason?: string
+        }>
+        setSourceName: (name: string) => Promise<{ success: boolean }>
+      }
     }
   }
 }

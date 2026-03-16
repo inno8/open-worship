@@ -4,6 +4,7 @@ import fs from 'fs'
 import { randomUUID } from 'crypto'
 import { pathToFileURL } from 'url'
 import * as db from './database'
+import { getNdiOutput } from './ndi/NdiOutput'
 
 // Backgrounds directory in user data
 const backgroundsDir = path.join(app.getPath('userData'), 'backgrounds')
@@ -288,6 +289,42 @@ ipcMain.handle('backgrounds:remove', (_event, filename: string) => {
   return true
 })
 
+// ============ NDI IPC HANDLERS ============
+
+ipcMain.handle('ndi:getStatus', () => {
+  return getNdiOutput().getStatus()
+})
+
+ipcMain.handle('ndi:start', async (_event, sourceName?: string) => {
+  const ndi = getNdiOutput()
+  if (sourceName) ndi.setSourceName(sourceName)
+  const success = await ndi.start()
+  const status = ndi.getStatus()
+  return { success, status }
+})
+
+ipcMain.handle('ndi:stop', () => {
+  getNdiOutput().stop()
+  return { success: true }
+})
+
+ipcMain.handle('ndi:sendFrame', (_event, frameData: { data: Uint8Array; width: number; height: number }) => {
+  const ndi = getNdiOutput()
+  if (!ndi.isRunning) return { success: false, reason: 'NDI not running' }
+
+  ndi.sendFrame({
+    data: Buffer.from(frameData.data.buffer, frameData.data.byteOffset, frameData.data.byteLength),
+    width: frameData.width,
+    height: frameData.height,
+  })
+  return { success: true }
+})
+
+ipcMain.handle('ndi:setSourceName', (_event, name: string) => {
+  getNdiOutput().setSourceName(name)
+  return { success: true }
+})
+
 // ============ APP LIFECYCLE ============
 
 app.whenReady().then(() => {
@@ -308,6 +345,7 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  getNdiOutput().stop()
   db.closeDatabase()
   if (process.platform !== 'darwin') {
     app.quit()
