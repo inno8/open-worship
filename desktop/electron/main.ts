@@ -270,12 +270,23 @@ ipcMain.handle('backgrounds:import', async () => {
   if (result.canceled || result.filePaths.length === 0) return []
 
   ensureBackgroundsDir()
+  console.log('[backgrounds:import] destination dir:', backgroundsDir)
   const imported: string[] = []
   for (const filePath of result.filePaths) {
     const ext = path.extname(filePath)
     const filename = `${randomUUID()}${ext}`
-    fs.copyFileSync(filePath, path.join(backgroundsDir, filename))
-    imported.push(filename)
+    const destPath = path.join(backgroundsDir, filename)
+    try {
+      fs.copyFileSync(filePath, destPath)
+      if (fs.existsSync(destPath)) {
+        imported.push(filename)
+        console.log('[backgrounds:import] copied:', path.basename(filePath), '->', filename)
+      } else {
+        console.error('[backgrounds:import] copy reported success but file missing:', destPath)
+      }
+    } catch (err) {
+      console.error('[backgrounds:import] copy failed:', filePath, '->', destPath, err)
+    }
   }
   return imported
 })

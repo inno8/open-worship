@@ -1,5 +1,18 @@
 import { NdiSender, isNdiAvailable } from './NdiKoffi'
 
+/** Convert RGBA buffer (canvas getImageData) to BGRA for NDI. */
+function rgbaToBgra(rgba: Buffer | Uint8Array, width: number, height: number): Buffer {
+  const len = width * height * 4
+  const bgra = Buffer.alloc(len)
+  for (let i = 0; i < len; i += 4) {
+    bgra[i] = rgba[i + 2]     // B
+    bgra[i + 1] = rgba[i + 1] // G
+    bgra[i + 2] = rgba[i]     // R
+    bgra[i + 3] = rgba[i + 3] // A
+  }
+  return bgra
+}
+
 export interface NdiFrameData {
   data: Buffer
   width: number
@@ -110,9 +123,10 @@ export class NdiOutput {
       return
     }
 
-    // Real NDI sender
+    // Real NDI sender: convert RGBA (canvas) to BGRA (NDI expectation on Windows)
     if (this.sender) {
-      this.sender.sendFrame(frameData.data, frameData.width, frameData.height)
+      const bgra = rgbaToBgra(frameData.data, frameData.width, frameData.height)
+      this.sender.sendFrame(bgra, frameData.width, frameData.height)
     }
   }
 

@@ -41,10 +41,17 @@ export class NdiFrameRenderer {
   private readonly height = NDI_FRAME_HEIGHT
   private lastSlideJson = ''
   private cachedFrame: RenderedFrame | null = null
+  private didLogFrameDimensions = false
 
   constructor() {
     this.canvas = new OffscreenCanvas(NDI_FRAME_WIDTH, NDI_FRAME_HEIGHT)
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true })!
+    // Verify OffscreenCanvas actual dimensions (debug NDI garbled output)
+    console.log('[NdiFrameRenderer] OffscreenCanvas created:', {
+      requested: `${NDI_FRAME_WIDTH}x${NDI_FRAME_HEIGHT}`,
+      actualWidth: this.canvas.width,
+      actualHeight: this.canvas.height,
+    })
   }
 
   async renderSlide(slide: SlideData | null): Promise<RenderedFrame | null> {
@@ -157,8 +164,30 @@ export class NdiFrameRenderer {
 
   private extractFrame(): RenderedFrame {
     const imageData = this.ctx.getImageData(0, 0, this.width, this.height)
+    const expectedBytes = this.width * this.height * 4
+    // Use exact slice: getImageData may share a larger buffer (causes garbled strip if we send extra bytes)
+    const data = new Uint8Array(
+      imageData.data.buffer,
+      imageData.data.byteOffset,
+      imageData.data.byteLength
+    )
+    if (data.byteLength !== expectedBytes) {
+      console.warn('[NdiFrameRenderer] getImageData size mismatch:', {
+        width: this.width,
+        height: this.height,
+        expectedBytes,
+        actualBytes: data.byteLength,
+      })
+    } else if (!this.didLogFrameDimensions) {
+      this.didLogFrameDimensions = true
+      console.log('[NdiFrameRenderer] getImageData OK:', {
+        width: this.width,
+        height: this.height,
+        bytes: data.byteLength,
+      })
+    }
     return {
-      data: new Uint8Array(imageData.data.buffer),
+      data,
       width: this.width,
       height: this.height,
     }

@@ -35,8 +35,9 @@ const NDIlib_video_frame_v2_t = koffi.struct('NDIlib_video_frame_v2_t', {
   timestamp: 'int64'
 })
 
-// FourCC codes
+// FourCC codes (NDI on Windows typically expects BGRA for correct colors)
 const FOURCC_RGBA = 0x41424752 // 'RGBA' in little-endian
+const FOURCC_BGRA = 0x41524742 // 'BGRA' in little-endian
 
 // Function pointers
 let NDIlib_initialize: (() => boolean) | null = null
@@ -141,7 +142,7 @@ export class NdiSender {
       const videoFrame = {
         xres: width,
         yres: height,
-        FourCC: FOURCC_RGBA,
+        FourCC: FOURCC_BGRA,
         frame_rate_N: 30000,
         frame_rate_D: 1001,
         picture_aspect_ratio: width / height,
