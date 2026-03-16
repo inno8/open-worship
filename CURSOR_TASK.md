@@ -1,55 +1,52 @@
-# Task: Fix NDI Output and Background Issues
+# Task: Fix Remaining Issues
 
-## Issues to Fix
+## Issue 1: NDI Text Not Readable When Scaled in OBS
 
-### 1. NDI Text Resize Issue
-When the NDI output is scaled in OBS, the text doesn't resize properly.
+The text in NDI output doesn't scale well. This is because we render at fixed 1920x1080 but the font size might be too small.
 
-**Root cause:** We're probably sending text as rendered pixels at a fixed resolution. When OBS scales the source, it stretches the pixels.
+**Fix:** 
+- Increase the base font size for NDI rendering (e.g., 96px instead of 64px)
+- The NDI frame is fixed resolution - when OBS scales it, the pixels scale. We need larger text to begin with.
 
-**Fix:** Render at a higher base resolution (1920x1080) and ensure the text is rendered at proper scale within that frame.
+**File:** `desktop/src/ndi/NdiFrameRenderer.ts`
+- In `parseFontSize()`, increase the default and minimum font sizes
+- Consider scaling the font size up for NDI output (e.g., multiply by 1.5)
 
-### 2. Background Not Sent to NDI
-The NDI output only shows lyrics text, not the background image.
+## Issue 2: Background Import Error
 
-**Fix:** The frame capture (NdiFrameRenderer.ts or useNdiOutput.ts) needs to:
-1. First draw the background image on the canvas
-2. Then draw the lyrics text on top
-3. Send the combined frame to NDI
+Error: `GET app-bg://e2103843-dffc-4384-91cc-321e6ad7df74.jpg/ net::ERR_UNEXPECTED`
 
-Currently it's probably only capturing text on transparent background.
+Note the trailing slash `/` - that's wrong. The protocol handler isn't handling URLs properly.
 
-### 3. Background Import Shows "Imported" But Image Not Visible
-User imports a background in Settings, gets success message, but image doesn't appear in the grid.
+**Fix in `desktop/electron/main.ts`:**
+- In the `app-bg` protocol handler, strip trailing slashes from the path
+- Handle edge cases in URL parsing
 
-**Possible causes:**
-- File copy fails silently
-- Thumbnail generation fails
-- State not updating after import
-- Path resolution issue
+Look for `protocol.handle('app-bg'` and fix the path extraction.
 
-**Fix:** Debug the addBackgrounds flow in presentationStore and the IPC handler.
+## Issue 3: Default App Flow on Startup
 
-## Files to Check/Modify
+When the app opens, it should:
+1. **Auto-enable NDI** - Turn on NDI broadcasting automatically
+2. **Default to Presenter view** - Not Library
+3. **Auto-load active schedule** - If there's a schedule for today, load it
 
-### For NDI issues (1 & 2):
-- `desktop/src/ndi/NdiFrameRenderer.ts` — frame capture logic
-- `desktop/src/ndi/useNdiOutput.ts` — hook that coordinates capture
-- `desktop/src/views/Presenter.tsx` — where live presentation happens
+**Files to modify:**
 
-### For background import (3):
-- `desktop/src/views/Settings.tsx` — import UI
-- `desktop/src/stores/presentationStore.ts` — addBackgrounds action
-- `desktop/electron/main.ts` — IPC handler for backgrounds:import
+### `desktop/src/App.tsx`
+- Change default view from 'library' to 'presenter'
+- On mount, call ndi:start if not already running
 
-## Expected Behavior
+### `desktop/src/stores/presentationStore.ts`
+- Set `ndiEnabled: true` as default (or auto-enable on first load)
 
-1. **NDI in OBS:** Full 1920x1080 frame with background + lyrics, scales cleanly
-2. **Background in NDI:** Same background visible in app should appear in NDI feed
-3. **Background import:** After clicking "Add Background" and selecting image, it should appear in the grid immediately
+### `desktop/src/views/Presenter.tsx` or `App.tsx`
+- On mount, check for today's schedule and auto-load it
+- Use the schedule store's `loadSchedules()` and find one matching today's date
 
 ## Acceptance Criteria
-- [ ] NDI output includes background image (not just text)
-- [ ] Text remains crisp when OBS scales the NDI source
-- [ ] Imported backgrounds appear in Settings grid immediately
-- [ ] Backgrounds persist after app restart
+- [ ] NDI text is larger and readable when OBS scales the source
+- [ ] Background import works without trailing slash error
+- [ ] App starts with NDI enabled
+- [ ] App opens to Presenter view by default
+- [ ] Today's schedule (if any) is auto-loaded on startup

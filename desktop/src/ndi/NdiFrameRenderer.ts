@@ -152,14 +152,24 @@ export class NdiFrameRenderer {
     }
   }
 
+  // NDI frame is fixed 1920x1080; use 96px default and scale up so text stays readable when OBS scales the source
+  private static readonly NDI_FONT_SIZE_DEFAULT = 96
+  private static readonly NDI_FONT_SIZE_SCALE = 1.5
+
   private parseFontSize(fontSize?: string): number {
-    if (!fontSize) return 64
+    if (!fontSize) return NdiFrameRenderer.NDI_FONT_SIZE_DEFAULT
     const match = fontSize.match(/([\d.]+)(rem|px|em)/)
-    if (!match) return 64
+    if (!match) return NdiFrameRenderer.NDI_FONT_SIZE_DEFAULT
     const value = parseFloat(match[1])
     const unit = match[2]
-    if (unit === 'rem' || unit === 'em') return value * 16
-    return value
+    let px: number
+    if (unit === 'rem' || unit === 'em') {
+      px = value * 16
+    } else {
+      px = value
+    }
+    const scaled = Math.round(px * NdiFrameRenderer.NDI_FONT_SIZE_SCALE)
+    return Math.max(scaled, NdiFrameRenderer.NDI_FONT_SIZE_DEFAULT)
   }
 
   private extractFrame(): RenderedFrame {

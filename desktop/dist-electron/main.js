@@ -697,8 +697,8 @@ electron.ipcMain.handle("ndi:setSourceName", (_event, name) => {
 electron.app.whenReady().then(() => {
   electron.protocol.handle("app-bg", (request) => {
     const url$1 = new URL(request.url);
-    const filename = decodeURIComponent(url$1.pathname).replace(/^\/+/, "");
-    const safeName = path.basename(filename);
+    const pathname = decodeURIComponent(url$1.pathname).replace(/^\/+/, "").replace(/\/+$/, "");
+    const safeName = path.basename(pathname);
     const filePath = path.join(backgroundsDir, safeName);
     return electron.net.fetch(url.pathToFileURL(filePath).toString());
   });

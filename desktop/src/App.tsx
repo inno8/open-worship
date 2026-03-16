@@ -6,18 +6,25 @@ import Presenter from './views/Presenter'
 import Settings from './views/Settings'
 import { useSongStore } from './stores/songStore'
 import { useScheduleStore } from './stores/scheduleStore'
+import { usePresentationStore } from './stores/presentationStore'
 
 type View = 'library' | 'schedule' | 'presenter' | 'settings'
 
 function App() {
-  const [currentView, setCurrentView] = useState<View>('library')
+  const [currentView, setCurrentView] = useState<View>('presenter')
   const loadSongs = useSongStore((state) => state.loadSongs)
   const loadSchedules = useScheduleStore((state) => state.loadSchedules)
 
-  // Load data from database on startup
+  // Load data from database on startup; auto-enable NDI; auto-load today's schedule if it exists
   useEffect(() => {
     loadSongs()
-    loadSchedules()
+    loadSchedules().then(() => {
+      const { schedules, setActiveSchedule } = useScheduleStore.getState()
+      const today = new Date().toISOString().slice(0, 10)
+      const todaysSchedule = schedules.find((s) => s.date === today)
+      if (todaysSchedule) setActiveSchedule(todaysSchedule)
+    })
+    usePresentationStore.getState().setNdiEnabled(true)
   }, [loadSongs, loadSchedules])
 
   // Check if this is the presentation window

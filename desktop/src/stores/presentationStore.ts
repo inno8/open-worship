@@ -78,7 +78,7 @@ export const usePresentationStore = create<PresentationState>()(
       fontFamily: 'inherit',
       defaultBackground: '#000000',
       backgrounds: [],
-      ndiEnabled: false,
+      ndiEnabled: true,
       ndiSourceName: 'Open Worship',
       ndiRunning: false,
       ndiAvailable: false,

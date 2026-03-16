@@ -342,8 +342,8 @@ app.whenReady().then(() => {
   // Register protocol handler for background images
   protocol.handle('app-bg', (request) => {
     const url = new URL(request.url)
-    const filename = decodeURIComponent(url.pathname).replace(/^\/+/, '')
-    const safeName = path.basename(filename)
+    const pathname = decodeURIComponent(url.pathname).replace(/^\/+/, '').replace(/\/+$/, '')
+    const safeName = path.basename(pathname)
     const filePath = path.join(backgroundsDir, safeName)
     return net.fetch(pathToFileURL(filePath).toString())
   })
