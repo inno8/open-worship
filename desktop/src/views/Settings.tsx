@@ -110,6 +110,8 @@ export default function Settings() {
   async function handleAddBackground() {
     const imported = await addBackgrounds()
     if (imported.length > 0) {
+      // Refresh list from main process so grid updates immediately (fixes import not showing)
+      await loadBackgrounds()
       setDefaultBackground(imported[0])
       showToast(`${imported.length} background${imported.length > 1 ? 's' : ''} added`)
     }

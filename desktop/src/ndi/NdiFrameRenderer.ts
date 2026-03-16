@@ -1,7 +1,8 @@
 import { SlideData } from '../stores/presentationStore'
 
-const DEFAULT_WIDTH = 1920
-const DEFAULT_HEIGHT = 1080
+// Fixed 1920x1080 so OBS can scale the source without stretching text pixels
+export const NDI_FRAME_WIDTH = 1920
+export const NDI_FRAME_HEIGHT = 1080
 
 export interface RenderedFrame {
   data: Uint8Array
@@ -9,22 +10,44 @@ export interface RenderedFrame {
   height: number
 }
 
+const imageCache = new Map<string, HTMLImageElement>()
+
+function loadBackgroundImage(filename: string): Promise<HTMLImageElement> {
+  const cached = imageCache.get(filename)
+  if (cached && cached.complete) return Promise.resolve(cached)
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => {
+      imageCache.set(filename, img)
+      resolve(img)
+    }
+    img.onerror = () => reject(new Error(`Failed to load background: ${filename}`))
+    // Use app-bg protocol so Electron serves from backgrounds dir
+    img.src = `app-bg:///${filename}`
+  })
+}
+
+function extractBackgroundFilename(backgroundImage?: string): string | null {
+  if (!backgroundImage) return null
+  const m = backgroundImage.match(/app-bg:\/\/\/?([^)]+)/)
+  return m ? m[1].trim() : null
+}
+
 export class NdiFrameRenderer {
   private canvas: OffscreenCanvas
   private ctx: OffscreenCanvasRenderingContext2D
-  private width: number
-  private height: number
+  private readonly width = NDI_FRAME_WIDTH
+  private readonly height = NDI_FRAME_HEIGHT
   private lastSlideJson = ''
   private cachedFrame: RenderedFrame | null = null
 
-  constructor(width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT) {
-    this.width = width
-    this.height = height
-    this.canvas = new OffscreenCanvas(width, height)
+  constructor() {
+    this.canvas = new OffscreenCanvas(NDI_FRAME_WIDTH, NDI_FRAME_HEIGHT)
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true })!
   }
 
-  renderSlide(slide: SlideData | null): RenderedFrame | null {
+  async renderSlide(slide: SlideData | null): Promise<RenderedFrame | null> {
     // Cache: if slide hasn't changed, return the same frame data
     const slideJson = slide ? JSON.stringify(slide) : ''
     if (slideJson === this.lastSlideJson && this.cachedFrame) {
@@ -35,6 +58,21 @@ export class NdiFrameRenderer {
     const { ctx, width, height } = this
 
     ctx.clearRect(0, 0, width, height)
+
+    // 1. Draw background (color then image) so NDI frame is not transparent
+    const bgColor = slide?.backgroundColor ?? '#000000'
+    ctx.fillStyle = bgColor
+    ctx.fillRect(0, 0, width, height)
+
+    const bgFilename = extractBackgroundFilename(slide?.backgroundImage)
+    if (bgFilename) {
+      try {
+        const img = await loadBackgroundImage(bgFilename)
+        ctx.drawImage(img, 0, 0, width, height)
+      } catch {
+        // Keep solid color if image fails to load
+      }
+    }
 
     if (!slide || !slide.text || slide.sectionType === 'blank') {
       this.cachedFrame = this.extractFrame()

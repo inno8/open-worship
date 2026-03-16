@@ -24,12 +24,12 @@ export function useNdiOutput() {
     return rendererRef.current
   }, [])
 
-  const sendCurrentFrame = useCallback(() => {
+  const sendCurrentFrame = useCallback(async () => {
     if (!window.electronAPI?.ndi) return
 
     const slide = lastSlideRef.current
     const renderer = getRenderer()
-    const frame = renderer.renderSlide(slide)
+    const frame = await renderer.renderSlide(slide)
 
     if (frame) {
       // Electron's structured clone handles Uint8Array efficiently
@@ -53,8 +53,8 @@ export function useNdiOutput() {
 
     if (shouldStream) {
       if (!intervalRef.current) {
-        sendCurrentFrame()
-        intervalRef.current = setInterval(sendCurrentFrame, FRAME_INTERVAL)
+        void sendCurrentFrame()
+        intervalRef.current = setInterval(() => void sendCurrentFrame(), FRAME_INTERVAL)
       }
     } else {
       if (intervalRef.current) {
@@ -62,17 +62,17 @@ export function useNdiOutput() {
         intervalRef.current = null
       }
 
-      // When going off-air but NDI is still running, send one transparent frame
+      // When going off-air but NDI is still running, send one frame (black/no slide)
       if (ndiEnabled && ndiRunning && !isLive) {
-        const renderer = getRenderer()
-        const emptyFrame = renderer.renderSlide(null)
-        if (emptyFrame && window.electronAPI?.ndi) {
-          window.electronAPI.ndi.sendFrame({
-            data: emptyFrame.data,
-            width: emptyFrame.width,
-            height: emptyFrame.height,
-          })
-        }
+        void getRenderer().renderSlide(null).then((emptyFrame) => {
+          if (emptyFrame && window.electronAPI?.ndi) {
+            window.electronAPI.ndi.sendFrame({
+              data: emptyFrame.data,
+              width: emptyFrame.width,
+              height: emptyFrame.height,
+            })
+          }
+        })
       }
     }
 

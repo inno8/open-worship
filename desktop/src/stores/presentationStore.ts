@@ -198,6 +198,9 @@ export const usePresentationStore = create<PresentationState>()(
           const imported = await window.electronAPI.backgrounds.import()
           if (imported.length > 0) {
             set((state) => ({ backgrounds: [...state.backgrounds, ...imported] }))
+            // Sync from main so UI always matches disk (handles any serialization/state edge cases)
+            const files = await window.electronAPI.backgrounds.list()
+            set({ backgrounds: files })
           }
           return imported
         }
