@@ -102,7 +102,7 @@ function PresentationWindow() {
         justifyContent: 'center',
         padding: '64px',
         backgroundColor: slideData.backgroundColor || '#000000',
-        backgroundImage: slideData.backgroundImage ? `url(${slideData.backgroundImage})` : undefined,
+        backgroundImage: slideData.backgroundImage || undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         position: 'relative',

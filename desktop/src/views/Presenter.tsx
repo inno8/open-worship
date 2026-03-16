@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
-import { usePresentationStore } from '../stores/presentationStore'
+import { usePresentationStore, getBackgroundStyle } from '../stores/presentationStore'
 import { useScheduleStore, ScheduleItem } from '../stores/scheduleStore'
 import { useSongStore, parseLyrics, Section, Song } from '../stores/songStore'
 
@@ -12,6 +12,8 @@ export default function Presenter() {
     fontSize,
     fontFamily,
     defaultBackground,
+    backgrounds,
+    loadBackgrounds,
   } = usePresentationStore()
 
   const { activeSchedule, addItem } = useScheduleStore()
@@ -24,6 +26,10 @@ export default function Presenter() {
   const [selectedVerseIndex, setSelectedVerseIndex] = useState<number>(0)
   const [previewSlide, setPreviewSlide] = useState<{ text: string; sectionType: string } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+  const [slideOverrideBg, setSlideOverrideBg] = useState<string | null>(null)
+  const [showBgPicker, setShowBgPicker] = useState(false)
+
+  useEffect(() => { loadBackgrounds() }, [])
 
   const showToast = useCallback((message: string) => {
     setToast(message)
@@ -61,6 +67,14 @@ export default function Presenter() {
     : activeTab === 'songs' && selectedSong
     ? selectedSong.title
     : 'Select an item'
+
+  // Effective background: slide override > song bg > default
+  const activeSong = activeTab === 'schedule' && selectedItem?.type === 'song' && selectedItem.song
+    ? selectedItem.song
+    : activeTab === 'songs' && selectedSong
+    ? selectedSong
+    : null
+  const effectiveBg = slideOverrideBg || activeSong?.defaultBackground || defaultBackground
 
   // Auto-select first item if none selected
   useEffect(() => {
@@ -171,13 +185,16 @@ export default function Presenter() {
     setSelectedVerseIndex(index)
     const verse = verses[index]
     if (verse) {
+      const bgStyle = getBackgroundStyle(effectiveBg)
       const slide = {
         text: verse.lines.join('\n'),
         sectionType: verse.type,
-        backgroundColor: '#000000',
+        fontSize,
+        fontFamily,
+        ...bgStyle,
       }
       setPreviewSlide(slide)
-      
+
       // If live, also update the live output
       if (isLive) {
         setCurrentSlide(slide)
@@ -215,17 +232,16 @@ export default function Presenter() {
 
   function handleToggleLive() {
     if (isLive) {
-      // Stop live - just toggle state, OBS/NDI will stop receiving
       setLive(false)
     } else {
-      // Go live - start sending to OBS/NDI
       setLive(true)
-      
-      // Push current preview to live output
+
       if (previewSlide) {
-        setCurrentSlide(previewSlide)
+        const bgStyle = getBackgroundStyle(effectiveBg)
+        const slideWithBg = { ...previewSlide, fontSize, fontFamily, ...bgStyle }
+        setCurrentSlide(slideWithBg)
         if (window.electronAPI) {
-          window.electronAPI.updatePresentation(previewSlide)
+          window.electronAPI.updatePresentation(slideWithBg)
         }
       }
     }
@@ -243,12 +259,14 @@ export default function Presenter() {
 
   function handlePushToLive() {
     if (previewSlide) {
-      setCurrentSlide(previewSlide)
+      const bgStyle = getBackgroundStyle(effectiveBg)
+      const slideWithBg = { ...previewSlide, fontSize, fontFamily, ...bgStyle }
+      setCurrentSlide(slideWithBg)
       if (window.electronAPI) {
-        window.electronAPI.updatePresentation(previewSlide)
+        window.electronAPI.updatePresentation(slideWithBg)
       }
       if (!isLive) {
-        handleToggleLive()
+        setLive(true)
       }
     }
   }
@@ -634,16 +652,38 @@ export default function Presenter() {
               flexDirection: 'column',
               borderRight: '1px solid rgba(255,255,255,0.08)',
             }}>
-              <div style={{ 
-                padding: '12px 16px', 
+              <div style={{
+                padding: '12px 16px',
                 borderBottom: '1px solid rgba(255,255,255,0.08)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
               }}>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                  Preview
-                </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Preview
+                  </span>
+                  <button
+                    onClick={() => setShowBgPicker(true)}
+                    title="Change slide background"
+                    style={{
+                      padding: '3px 6px',
+                      borderRadius: '4px',
+                      backgroundColor: 'rgba(255,255,255,0.05)',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      cursor: 'pointer',
+                      color: '#a0aec0',
+                      display: 'flex',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <rect x="3" y="3" width="18" height="18" rx="2" />
+                      <circle cx="8.5" cy="8.5" r="1.5" />
+                      <path d="M21 15l-5-5L5 21" />
+                    </svg>
+                  </button>
+                </div>
                 <button
                   onClick={handlePushToLive}
                   style={{
@@ -660,9 +700,11 @@ export default function Presenter() {
                   → LIVE
                 </button>
               </div>
-              <div style={{ 
-                flex: 1, 
-                backgroundColor: defaultBackground,
+              <div style={{
+                flex: 1,
+                ...getBackgroundStyle(effectiveBg),
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -725,9 +767,11 @@ export default function Presenter() {
                   Live
                 </span>
               </div>
-              <div style={{ 
-                flex: 1, 
-                backgroundColor: defaultBackground,
+              <div style={{
+                flex: 1,
+                ...getBackgroundStyle(effectiveBg),
+                backgroundSize: 'cover',
+                backgroundPosition: 'center',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -784,6 +828,111 @@ export default function Presenter() {
           </div>
         </div>
       </div>
+
+      {/* Per-slide background picker modal */}
+      {showBgPicker && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            backgroundColor: 'rgba(0,0,0,0.75)'
+          }}
+          onClick={() => setShowBgPicker(false)}
+        >
+          <div
+            style={{
+              borderRadius: '20px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              width: '480px',
+              maxHeight: '70vh',
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: '#16213e',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '20px 24px',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', margin: 0 }}>Slide Background</h3>
+              <button
+                onClick={() => setShowBgPicker(false)}
+                style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', padding: '6px' }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+              {/* Reset to song/default */}
+              <button
+                onClick={() => { setSlideOverrideBg(null); setShowBgPicker(false) }}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  marginBottom: '16px',
+                  borderRadius: '10px',
+                  border: !slideOverrideBg
+                    ? '2px solid #e94560'
+                    : '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: !slideOverrideBg
+                    ? 'rgba(233,69,96,0.15)'
+                    : 'rgba(255,255,255,0.05)',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  fontSize: '13px',
+                }}
+              >
+                Use Song/Default Background
+              </button>
+
+              {backgrounds.length > 0 && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '10px',
+                }}>
+                  {backgrounds.map((filename) => (
+                    <button
+                      key={filename}
+                      onClick={() => {
+                        setSlideOverrideBg(filename)
+                        setShowBgPicker(false)
+                      }}
+                      style={{
+                        aspectRatio: '16/9',
+                        borderRadius: '10px',
+                        border: slideOverrideBg === filename
+                          ? '3px solid #e94560'
+                          : '2px solid rgba(255,255,255,0.1)',
+                        backgroundImage: `url(app-bg:///${filename})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        cursor: 'pointer',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              {backgrounds.length === 0 && (
+                <p style={{ color: '#a0aec0', fontSize: '13px', textAlign: 'center' }}>
+                  No backgrounds. Add them in Settings.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast notification */}
       {toast && (
