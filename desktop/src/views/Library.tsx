@@ -1,6 +1,7 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, useEffect } from 'react'
 import { useSongStore, parseLyrics, autoFormatLyrics, Song } from '../stores/songStore'
 import { useScheduleStore } from '../stores/scheduleStore'
+import { usePresentationStore, getBackgroundStyle } from '../stores/presentationStore'
 
 // Parse a text file to extract song info
 // Supports formats:
@@ -72,12 +73,16 @@ export default function Library() {
   } = useSongStore()
 
   const { activeSchedule, addItem } = useScheduleStore()
+  const { backgrounds, loadBackgrounds } = usePresentationStore()
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [showBgPicker, setShowBgPicker] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editingSongId, setEditingSongId] = useState<string | null>(null)
+
+  useEffect(() => { loadBackgrounds() }, [])
 
   // Add modal fields
   const [newTitle, setNewTitle] = useState('')
@@ -770,13 +775,13 @@ export default function Library() {
                       {selectedSong.tags.map((tag) => (
                         <span
                           key={tag}
-                          style={{ 
-                            fontSize: '13px', 
-                            padding: '8px 18px', 
-                            borderRadius: '20px', 
+                          style={{
+                            fontSize: '13px',
+                            padding: '8px 18px',
+                            borderRadius: '20px',
                             fontWeight: 500,
-                            backgroundColor: '#0f3460', 
-                            color: '#a0aec0' 
+                            backgroundColor: '#0f3460',
+                            color: '#a0aec0'
                           }}
                         >
                           {tag}
@@ -784,6 +789,38 @@ export default function Library() {
                       ))}
                     </div>
                   )}
+                  {/* Background row */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginTop: '20px' }}>
+                    <span style={{ fontSize: '13px', color: '#a0aec0' }}>Background:</span>
+                    <button
+                      onClick={() => setShowBgPicker(true)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '6px 14px',
+                        borderRadius: '8px',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        color: '#ffffff',
+                        cursor: 'pointer',
+                        fontSize: '13px',
+                      }}
+                    >
+                      {selectedSong.defaultBackground ? (
+                        <div style={{
+                          width: '32px',
+                          height: '18px',
+                          borderRadius: '4px',
+                          ...getBackgroundStyle(selectedSong.defaultBackground),
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center',
+                          border: '1px solid rgba(255,255,255,0.2)',
+                        }} />
+                      ) : null}
+                      <span>{selectedSong.defaultBackground ? (selectedSong.defaultBackground.startsWith('#') ? selectedSong.defaultBackground : 'Custom') : 'Default'}</span>
+                    </button>
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '12px', marginLeft: '32px', flexShrink: 0 }}>
                   <button
@@ -905,6 +942,121 @@ export default function Library() {
 
       {/* Delete Dialog */}
       {deleteDialogContent}
+
+      {/* Background Picker Modal */}
+      {showBgPicker && selectedSong && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+            backgroundColor: 'rgba(0,0,0,0.75)'
+          }}
+          onClick={() => setShowBgPicker(false)}
+        >
+          <div
+            style={{
+              borderRadius: '20px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              width: '520px',
+              maxHeight: '80vh',
+              display: 'flex',
+              flexDirection: 'column',
+              backgroundColor: '#16213e',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '24px 28px',
+              borderBottom: '1px solid rgba(255,255,255,0.1)',
+            }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#ffffff', margin: 0 }}>Song Background</h3>
+              <button
+                onClick={() => setShowBgPicker(false)}
+                style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', padding: '8px' }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              </button>
+            </div>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '24px 28px' }}>
+              {/* Use Default option */}
+              <button
+                onClick={async () => {
+                  const { updateSong } = useSongStore.getState()
+                  await updateSong(selectedSong.id, { defaultBackground: undefined } as Partial<Song>)
+                  setShowBgPicker(false)
+                  showToast('Background set to default')
+                }}
+                style={{
+                  width: '100%',
+                  padding: '14px',
+                  marginBottom: '20px',
+                  borderRadius: '12px',
+                  border: !selectedSong.defaultBackground
+                    ? '2px solid #e94560'
+                    : '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: !selectedSong.defaultBackground
+                    ? 'rgba(233,69,96,0.15)'
+                    : 'rgba(255,255,255,0.05)',
+                  color: '#ffffff',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                }}
+              >
+                Use Default Background
+              </button>
+
+              {/* Background grid */}
+              {backgrounds.length > 0 && (
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(3, 1fr)',
+                  gap: '12px',
+                }}>
+                  {backgrounds.map((filename) => (
+                    <button
+                      key={filename}
+                      onClick={async () => {
+                        const { updateSong } = useSongStore.getState()
+                        await updateSong(selectedSong.id, { defaultBackground: filename })
+                        setShowBgPicker(false)
+                        showToast('Song background updated')
+                      }}
+                      style={{
+                        aspectRatio: '16/9',
+                        borderRadius: '12px',
+                        border: selectedSong.defaultBackground === filename
+                          ? '3px solid #e94560'
+                          : '2px solid rgba(255,255,255,0.1)',
+                        backgroundImage: `url(app-bg:///${filename})`,
+                        backgroundSize: 'cover',
+                        backgroundPosition: 'center',
+                        cursor: 'pointer',
+                        transition: 'border-color 0.2s',
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              {backgrounds.length === 0 && (
+                <p style={{ color: '#a0aec0', fontSize: '13px', textAlign: 'center', margin: '20px 0' }}>
+                  No backgrounds added yet. Add backgrounds in Settings.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Success Toast */}
       {toast && (
