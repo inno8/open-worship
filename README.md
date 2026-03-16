@@ -4,6 +4,8 @@
 
 Display worship song lyrics with ease — a modern alternative to EasyWorship.
 
+📖 **User documentation:** [docs/](docs/README.md) — getting started, adding songs, building schedules, running a service, NDI/OBS setup, shortcuts, and FAQ for church tech volunteers.
+
 ## Features
 
 - 🎵 **Song Library** — Organize and search your worship songs
