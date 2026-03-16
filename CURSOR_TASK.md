@@ -1,97 +1,60 @@
-# Task: Downloadable Installers (#16)
+# Task: GitHub Pages Landing Page (#17)
 
 ## Overview
-Configure electron-builder to create installers for Windows, macOS, and Linux.
+Create a landing page for Open Worship deployed on GitHub Pages.
 
-## Build Targets
+## Page Structure
 
-### Windows
-- NSIS installer (.exe)
-- Portable (.zip)
+### Hero Section
+- Large "Open Worship" title
+- Tagline: "Free, open-source church presentation software"
+- Primary CTA: Download button
+- Screenshot or app preview
 
-### macOS  
-- DMG installer
+### Features Section
+- Song Library: Organize your worship songs
+- Schedule Builder: Plan your services
+- Live Presenter: Present with confidence
+- NDI/OBS Integration: Stream to your production
 
-### Linux
-- AppImage
-- .deb package
+### Download Section
+- OS-specific download buttons (Windows, macOS, Linux)
+- Links to latest GitHub Release
+- Version number
 
-## Implementation
+### Quick Start
+- Brief 3-step guide
+- Link to full documentation
 
-### 1. Update package.json build config
-```json
-{
-  "build": {
-    "appId": "com.inno8.openworship",
-    "productName": "Open Worship",
-    "directories": {
-      "output": "release"
-    },
-    "files": [
-      "dist/**/*",
-      "dist-electron/**/*",
-      "node_modules/**/*"
-    ],
-    "win": {
-      "target": ["nsis", "zip"],
-      "icon": "build/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico"
-    },
-    "mac": {
-      "target": ["dmg"],
-      "icon": "build/icon.icns",
-      "category": "public.app-category.utilities"
-    },
-    "linux": {
-      "target": ["AppImage", "deb"],
-      "icon": "build/icons",
-      "category": "Utility"
-    },
-    "publish": {
-      "provider": "github",
-      "owner": "inno8",
-      "repo": "open-worship"
-    }
-  }
-}
-```
+### Footer
+- GitHub link
+- Documentation link
+- License info
 
-### 2. Create App Icons
-Create placeholder icons in desktop/build/:
-- icon.ico (Windows) - 256x256
-- icon.icns (macOS)
-- icons/ folder with PNGs for Linux (16x16, 32x32, 48x48, 64x64, 128x128, 256x256, 512x512)
+## Design
+- Modern, clean design
+- Dark theme (match app: #1a1a2e, #e94560 accent)
+- Mobile responsive
+- Fast loading (minimal dependencies)
 
-For now, create a simple placeholder or use a text-based icon generator.
+## Technical
+- Single HTML file with embedded CSS
+- No build step required
+- GitHub Pages compatible
+- Place in /website folder or root docs/
 
-### 3. Create GitHub Actions Workflow
-Create .github/workflows/release.yml:
-- Trigger on push to 'release' branch or tag
-- Build for all platforms (using matrix)
-- Upload artifacts to GitHub Releases
+## Files to Create
+- website/index.html - Main landing page
+- website/styles.css - Styles (or inline)
+- website/CNAME - Custom domain (optional, leave blank)
 
-### 4. Fix Current Build Issues
-The current Windows build fails on symlink errors. 
-- Add to package.json scripts: "dist": "vite build && electron-builder --win --mac --linux"
-- Or separate: "dist:win", "dist:mac", "dist:linux"
-
-## Files to Create/Modify
-- desktop/package.json - build config
-- desktop/build/icon.ico - Windows icon
-- desktop/build/icon.icns - macOS icon  
-- desktop/build/icons/ - Linux icons
-- .github/workflows/release.yml - CI/CD
+## GitHub Pages Setup
+After creating files, enable in repo Settings > Pages > Source: main branch /website folder
 
 ## Acceptance Criteria
-- [ ] electron-builder config complete
-- [ ] App icons created (placeholder OK)
-- [ ] Windows NSIS build works
-- [ ] macOS DMG build config ready
-- [ ] Linux AppImage/deb config ready
-- [ ] GitHub Actions workflow created
+- [ ] Landing page created
+- [ ] Responsive design
+- [ ] Download buttons link to releases
+- [ ] Features highlighted
+- [ ] Documentation linked
+- [ ] Ready for GitHub Pages deployment

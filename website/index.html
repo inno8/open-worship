@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Open Worship — Free, open-source church presentation software</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    :root {
+      --bg: #1a1a2e;
+      --bg-card: #16213e;
+      --accent: #e94560;
+      --accent-hover: #ff6b6b;
+      --text: #eaeaea;
+      --text-muted: #a0a0a0;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { color: var(--accent-hover); }
+
+    .container { max-width: 960px; margin: 0 auto; padding: 0 1.5rem; }
+    section { padding: 4rem 0; }
+    h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 700; margin: 0 0 0.5rem; letter-spacing: -0.02em; }
+    h2 { font-size: 1.75rem; font-weight: 600; margin: 0 0 2rem; }
+    h3 { font-size: 1.15rem; font-weight: 600; margin: 0 0 0.5rem; }
+
+    /* Hero */
+    .hero {
+      min-height: 60vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 4rem 0;
+    }
+    .hero .tagline {
+      font-size: 1.25rem;
+      color: var(--text-muted);
+      margin-bottom: 2rem;
+    }
+    .btn {
+      display: inline-block;
+      padding: 0.85rem 1.75rem;
+      background: var(--accent);
+      color: #fff;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .btn:hover {
+      background: var(--accent-hover);
+      color: #fff;
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: transparent;
+      border: 2px solid var(--accent);
+      color: var(--accent);
+    }
+    .btn-outline:hover { background: rgba(233, 69, 96, 0.15); color: var(--accent-hover); border-color: var(--accent-hover); }
+
+    /* Features grid */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1.5rem;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border-radius: 12px;
+      padding: 1.75rem;
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .feature-card:hover {
+      border-color: rgba(233, 69, 96, 0.3);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+    }
+    .feature-card .icon {
+      width: 48px;
+      height: 48px;
+      background: rgba(233, 69, 96, 0.2);
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .feature-card p { color: var(--text-muted); font-size: 0.95rem; margin: 0; }
+
+    /* Download buttons */
+    .download-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: center;
+    }
+    .download-grid .btn {
+      min-width: 140px;
+      text-align: center;
+    }
+
+    /* Quick start */
+    .steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 2rem;
+      counter-reset: step;
+    }
+    .step {
+      position: relative;
+      padding-left: 3rem;
+    }
+    .step::before {
+      counter-increment: step;
+      content: counter(step);
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 2rem;
+      height: 2rem;
+      background: var(--accent);
+      color: #fff;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 0.9rem;
+    }
+    .step h3 { margin-top: 0; }
+    .step p { color: var(--text-muted); font-size: 0.95rem; margin: 0 0 1rem; }
+    .quick-start-cta { margin-top: 2rem; text-align: center; }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 2rem 0;
+      margin-top: 3rem;
+    }
+    .footer-inner {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+    }
+    .footer-links { display: flex; gap: 1.5rem; }
+    .footer-links a { color: var(--text-muted); }
+    .footer-links a:hover { color: var(--accent-hover); }
+    .license { color: var(--text-muted); font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="container">
+      <h1>Open Worship</h1>
+      <p class="tagline">Free, open-source church presentation software</p>
+      <a href="#download" class="btn">Download</a>
+    </div>
+  </header>
+
+  <section id="features">
+    <div class="container">
+      <h2>Features</h2>
+      <div class="features-grid">
+        <div class="feature-card">
+          <div class="icon">📚</div>
+          <h3>Song Library</h3>
+          <p>Manage lyrics, chords, and media in one place. Import from CCLI, OpenSong, or add your own.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📅</div>
+          <h3>Schedule Builder</h3>
+          <p>Plan services with drag-and-drop. Build setlists and run orders in minutes.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">🖥️</div>
+          <h3>Live Presenter</h3>
+          <p>Clean, distraction-free output for projectors and screens. Lyrics, slides, and media in sync.</p>
+        </div>
+        <div class="feature-card">
+          <div class="icon">📡</div>
+          <h3>NDI / OBS Integration</h3>
+          <p>Stream to OBS or any NDI-compatible software. Perfect for online services and recording.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="download">
+    <div class="container">
+      <h2>Download</h2>
+      <p style="color: var(--text-muted); margin-bottom: 1.5rem;">Available for all major platforms. Get the latest release from GitHub.</p>
+      <div class="download-grid">
+        <a href="https://github.com/inno8/open-worship/releases/latest" class="btn">Windows</a>
+        <a href="https://github.com/inno8/open-worship/releases/latest" class="btn">macOS</a>
+        <a href="https://github.com/inno8/open-worship/releases/latest" class="btn">Linux</a>
+      </div>
+    </div>
+  </section>
+
+  <section id="quick-start">
+    <div class="container">
+      <h2>Quick Start</h2>
+      <div class="steps">
+        <div class="step">
+          <h3>Download</h3>
+          <p>Grab the installer for your platform from the links above.</p>
+        </div>
+        <div class="step">
+          <h3>Add your content</h3>
+          <p>Import songs or create new items in the library. Connect media if needed.</p>
+        </div>
+        <div class="step">
+          <h3>Present</h3>
+          <p>Build a schedule, open the presenter view, and connect to your display or OBS.</p>
+        </div>
+      </div>
+      <p class="quick-start-cta">
+        <a href="https://github.com/inno8/open-worship/blob/main/docs/README.md" class="btn btn-outline">View full documentation</a>
+      </p>
+    </div>
+  </section>
+
+  <footer>
+    <div class="container footer-inner">
+      <div class="footer-links">
+        <a href="https://github.com/inno8/open-worship">GitHub</a>
+        <a href="https://github.com/inno8/open-worship/blob/main/docs/README.md">Docs</a>
+      </div>
+      <span class="license">MIT License</span>
+    </div>
+  </footer>
+</body>
+</html>
