@@ -340,16 +340,7 @@ export default function Settings() {
                     <input
                       type={showApiToken ? 'text' : 'password'}
                       value={apiToken}
-                      onChange={(e) => {
-                        if (apiToken && apiToken.length > 0) {
-                          // Show warning when editing existing token
-                          setTempToken(e.target.value)
-                          setPendingTokenAction('edit')
-                          setShowTokenWarning(true)
-                        } else {
-                          setApiToken(e.target.value)
-                        }
-                      }}
+                      onChange={(e) => setApiToken(e.target.value)}
                       placeholder="Paste your API token here"
                       style={inputStyle}
                     />
