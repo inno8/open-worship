@@ -13,21 +13,28 @@ export interface ApiSong {
   updatedAt?: string
 }
 
+export interface ApiScheduleItem {
+  id?: string
+  order?: number
+  type?: 'song' | 'blank' | 'custom'
+  songId?: string
+  song_id?: string // snake_case variant
+  song?: ApiSong
+  customTitle?: string
+  custom_title?: string
+  customText?: string
+  custom_text?: string
+}
+
 export interface ApiSchedule {
   id: string
-  name: string
+  name?: string
   title?: string // Some APIs use title instead of name
   date?: string
   notes?: string
-  items?: Array<{
-    id: string
-    order: number
-    type: 'song' | 'blank' | 'custom'
-    songId?: string
-    song?: ApiSong
-    customTitle?: string
-    customText?: string
-  }>
+  items?: ApiScheduleItem[]
+  entries?: ApiScheduleItem[] // Some APIs use "entries" instead of "items"
+  songs?: ApiSong[] // Some APIs embed songs directly
   createdAt?: string
   updatedAt?: string
 }
@@ -214,19 +221,38 @@ export function apiSongToLocal(apiSong: ApiSong): Song {
 // Convert API schedule to local Schedule format
 export function apiScheduleToLocal(apiSchedule: ApiSchedule): Schedule {
   const now = new Date().toISOString()
+  
+  // Handle different API response formats for items
+  // Could be: items, entries, or songs (direct array of songs)
+  let scheduleItems: ApiScheduleItem[] = []
+  
+  if (apiSchedule.items && apiSchedule.items.length > 0) {
+    scheduleItems = apiSchedule.items
+  } else if (apiSchedule.entries && apiSchedule.entries.length > 0) {
+    scheduleItems = apiSchedule.entries
+  } else if (apiSchedule.songs && apiSchedule.songs.length > 0) {
+    // If API returns songs directly, convert them to schedule items
+    scheduleItems = apiSchedule.songs.map((song, idx) => ({
+      id: `item-${song.id}`,
+      order: idx,
+      type: 'song' as const,
+      song: song,
+    }))
+  }
+  
   return {
     id: apiSchedule.id,
     name: apiSchedule.name || apiSchedule.title || 'Untitled Schedule',
     date: apiSchedule.date,
     notes: apiSchedule.notes || '',
-    items: (apiSchedule.items || []).map((item, index) => ({
+    items: scheduleItems.map((item, index) => ({
       id: item.id || crypto.randomUUID(),
       order: item.order ?? index,
       type: item.type || 'song',
-      songId: item.songId || item.song?.id || null,
+      songId: item.songId || item.song_id || item.song?.id || null,
       song: item.song ? apiSongToLocal(item.song) : null,
-      customTitle: item.customTitle || null,
-      customText: item.customText || null,
+      customTitle: item.customTitle || item.custom_title || null,
+      customText: item.customText || item.custom_text || null,
     })),
     createdAt: apiSchedule.createdAt || now,
     updatedAt: apiSchedule.updatedAt || now,

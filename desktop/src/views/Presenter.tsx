@@ -4,7 +4,7 @@ import { useScheduleStore, ScheduleItem, Schedule } from '../stores/scheduleStor
 import { useSongStore, parseLyrics, Section, Song } from '../stores/songStore'
 import { useNdiOutput } from '../ndi/useNdiOutput'
 import { useSyncStore } from '../stores/syncStore'
-import { fetchSchedulesFromApi, apiScheduleToLocal } from '../services/apiSync'
+import { fetchSchedulesFromApi, apiScheduleToLocal, ApiSchedule } from '../services/apiSync'
 
 export default function Presenter() {
   useNdiOutput()
@@ -26,7 +26,7 @@ export default function Presenter() {
   } = usePresentationStore()
 
   const { activeSchedule, addItem, setSchedules, setActiveSchedule, schedules } = useScheduleStore()
-  const { songs } = useSongStore()
+  const { songs, addSong } = useSongStore()
   const { apiToken, apiBaseUrl } = useSyncStore()
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'songs'>('schedule')
@@ -69,17 +69,42 @@ export default function Presenter() {
         return
       }
 
-      const fetchedSchedules = (result.data || []).map(apiScheduleToLocal)
+      const apiSchedules = result.data || []
+      const fetchedSchedules = apiSchedules.map(apiScheduleToLocal)
       
       // Filter to current and future schedules
       const today = new Date().toISOString().split('T')[0]
       const currentAndFuture = fetchedSchedules.filter(s => !s.date || s.date >= today)
       
+      // Also save any songs from schedule items to local DB
+      let songsAdded = 0
+      for (const schedule of currentAndFuture) {
+        for (const item of schedule.items || []) {
+          if (item.type === 'song' && item.song) {
+            // Check if song already exists in local DB
+            const exists = songs.some(
+              s => s.id === item.song!.id || 
+                   (s.title.toLowerCase() === item.song!.title.toLowerCase() && 
+                    s.author.toLowerCase() === (item.song!.author || '').toLowerCase())
+            )
+            
+            if (!exists) {
+              await addSong(item.song)
+              songsAdded++
+            }
+          }
+        }
+      }
+      
       setApiSchedules(currentAndFuture)
       setViewMode('list')
       setSelectedApiSchedule(null)
       
-      showToast(`Found ${currentAndFuture.length} schedule${currentAndFuture.length !== 1 ? 's' : ''}`)
+      let message = `Found ${currentAndFuture.length} schedule${currentAndFuture.length !== 1 ? 's' : ''}`
+      if (songsAdded > 0) {
+        message += ` (${songsAdded} new song${songsAdded !== 1 ? 's' : ''} added)`
+      }
+      showToast(message)
     } catch (error) {
       console.error('Schedule sync error:', error)
       showToast('Sync failed: ' + (error instanceof Error ? error.message : 'Unknown error'))
