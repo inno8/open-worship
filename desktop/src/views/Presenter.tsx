@@ -730,7 +730,7 @@ export default function Presenter() {
                   ))}
                 </div>
               ) : viewMode === 'detail' && selectedApiSchedule ? (
-                /* Detail view - show schedule items */
+                /* Detail view - show schedule items + session items */
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                     <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{selectedApiSchedule.name}</div>
@@ -738,50 +738,142 @@ export default function Presenter() {
                       <div style={{ fontSize: '11px', color: '#a0aec0', marginTop: '4px' }}>{selectedApiSchedule.date}</div>
                     )}
                   </div>
-                  {selectedApiSchedule.items && selectedApiSchedule.items.length > 0 ? (
-                    selectedApiSchedule.items.map((item, idx) => (
-                      <div
-                        key={item.id}
-                        onClick={() => {
-                          setSelectedItemId(item.id)
-                          setSelectedVerseIndex(0)
-                        }}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '12px 16px',
-                          cursor: 'pointer',
-                          backgroundColor: selectedItemId === item.id ? 'rgba(233,69,96,0.15)' : 'transparent',
-                          borderLeft: selectedItemId === item.id ? '3px solid #e94560' : '3px solid transparent',
-                        }}
-                      >
-                        <span style={{ 
-                          fontSize: '11px', 
-                          color: 'rgba(160,174,192,0.5)', 
-                          fontFamily: 'monospace',
-                          width: '16px',
-                        }}>
-                          {idx + 1}
+                  
+                  {/* API schedule items */}
+                  {selectedApiSchedule.items && selectedApiSchedule.items.map((item, idx) => (
+                    <div
+                      key={item.id}
+                      onClick={() => {
+                        setSelectedItemId(item.id)
+                        setSelectedVerseIndex(0)
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '12px 16px',
+                        cursor: 'pointer',
+                        backgroundColor: selectedItemId === item.id ? 'rgba(233,69,96,0.15)' : 'transparent',
+                        borderLeft: selectedItemId === item.id ? '3px solid #e94560' : '3px solid transparent',
+                      }}
+                    >
+                      <span style={{ 
+                        fontSize: '11px', 
+                        color: 'rgba(160,174,192,0.5)', 
+                        fontFamily: 'monospace',
+                        width: '16px',
+                      }}>
+                        {idx + 1}
+                      </span>
+                      <span style={{ color: item.type === 'song' ? '#e94560' : '#a0aec0' }}>
+                        {getItemIcon(item.type)}
+                      </span>
+                      <span style={{ 
+                        fontSize: '13px', 
+                        color: '#ffffff',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        flex: 1,
+                      }}>
+                        {getItemTitle(item)}
+                      </span>
+                    </div>
+                  ))}
+                  
+                  {/* Session items (songs added during this session) */}
+                  {sessionItems.length > 0 && (
+                    <>
+                      <div style={{ 
+                        padding: '12px 16px', 
+                        borderTop: '1px solid rgba(255,255,255,0.08)',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                      }}>
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: '#a0aec0', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Added Songs
                         </span>
-                        <span style={{ color: item.type === 'song' ? '#e94560' : '#a0aec0' }}>
-                          {getItemIcon(item.type)}
-                        </span>
-                        <span style={{ 
-                          fontSize: '13px', 
-                          color: '#ffffff',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          flex: 1,
-                        }}>
-                          {getItemTitle(item)}
-                        </span>
+                        <button
+                          onClick={clearSessionItems}
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            backgroundColor: 'rgba(239,68,68,0.1)',
+                            color: '#ef4444',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '10px',
+                          }}
+                        >
+                          Clear
+                        </button>
                       </div>
-                    ))
-                  ) : (
+                      {sessionItems.map((item, idx) => (
+                        <div
+                          key={item.id}
+                          onClick={() => {
+                            setSelectedItemId(item.id)
+                            setSelectedVerseIndex(0)
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '12px 16px',
+                            cursor: 'pointer',
+                            backgroundColor: selectedItemId === item.id ? 'rgba(233,69,96,0.15)' : 'transparent',
+                            borderLeft: selectedItemId === item.id ? '3px solid #e94560' : '3px solid transparent',
+                          }}
+                        >
+                          <span style={{ 
+                            fontSize: '11px', 
+                            color: 'rgba(160,174,192,0.5)', 
+                            fontFamily: 'monospace',
+                            width: '16px',
+                          }}>
+                            {(selectedApiSchedule.items?.length || 0) + idx + 1}
+                          </span>
+                          <span style={{ color: '#e94560' }}>
+                            {getItemIcon(item.type)}
+                          </span>
+                          <span style={{ 
+                            fontSize: '13px', 
+                            color: '#ffffff',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            flex: 1,
+                          }}>
+                            {getItemTitle(item)}
+                          </span>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); removeSessionItem(item.id) }}
+                            title="Remove"
+                            style={{
+                              padding: '4px',
+                              borderRadius: '4px',
+                              backgroundColor: 'transparent',
+                              color: '#a0aec0',
+                              border: 'none',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <line x1="18" y1="6" x2="6" y2="18" />
+                              <line x1="6" y1="6" x2="18" y2="18" />
+                            </svg>
+                          </button>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                  
+                  {/* Empty state if no items at all */}
+                  {(!selectedApiSchedule.items || selectedApiSchedule.items.length === 0) && sessionItems.length === 0 && (
                     <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0', fontSize: '13px' }}>
-                      No items in this schedule
+                      No items in this schedule. Add songs from Songs tab.
                     </div>
                   )}
                 </div>
