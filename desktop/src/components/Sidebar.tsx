@@ -68,15 +68,11 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
       {/* Logo */}
       <div className="px-6 py-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <h1 className="text-xl font-bold text-white flex items-center gap-3">
-          <div 
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: 'rgba(233,69,96,0.15)' }}
-          >
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#e94560" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="12" y1="2" x2="12" y2="22" />
-              <line x1="4" y1="8" x2="20" y2="8" />
-            </svg>
-          </div>
+          <img 
+            src="/assets/icons/icon.svg" 
+            alt="Open Worship" 
+            style={{ width: 40, height: 40 }}
+          />
           <span>Open Worship</span>
         </h1>
       </div>
