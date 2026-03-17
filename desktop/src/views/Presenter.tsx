@@ -733,10 +733,12 @@ export default function Presenter() {
                 /* Detail view - show schedule items + session items */
                 <div style={{ flex: 1, overflowY: 'auto' }}>
                   <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{selectedApiSchedule.name}</div>
-                    {selectedApiSchedule.date && (
-                      <div style={{ fontSize: '11px', color: '#a0aec0', marginTop: '4px' }}>{selectedApiSchedule.date}</div>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{selectedApiSchedule.name}</span>
+                      {selectedApiSchedule.date && (
+                        <span style={{ fontSize: '11px', color: '#a0aec0', padding: '2px 8px', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: '4px' }}>{selectedApiSchedule.date}</span>
+                      )}
+                    </div>
                   </div>
                   
                   {/* API schedule items */}
