@@ -1,0 +1,4 @@
+owner: inno8
+repo: open-worship
+provider: github
+updaterCacheDirName: open-worship-updater

@@ -71,7 +71,25 @@ export default function Settings() {
     backendWsUrl,
     connectionStatus,
     setBackendWsUrl,
+    apiToken,
+    apiBaseUrl,
+    songEndpoint,
+    scheduleEndpoint,
+    heartbeatEndpoint,
+    heartbeatIntervalMinutes,
+    setApiToken,
+    setApiBaseUrl,
+    setSongEndpoint,
+    setScheduleEndpoint,
+    setHeartbeatEndpoint,
+    setHeartbeatIntervalMinutes,
   } = useSyncStore()
+
+  // API Token state
+  const [showApiToken, setShowApiToken] = useState(false)
+  const [showTokenWarning, setShowTokenWarning] = useState(false)
+  const [pendingTokenAction, setPendingTokenAction] = useState<'edit' | 'clear' | null>(null)
+  const [tempToken, setTempToken] = useState('')
 
   const showToast = useCallback((message: string) => {
     setToast(message)
@@ -298,6 +316,143 @@ export default function Settings() {
                 >
                   Reconnect
                 </button>
+              </div>
+            </div>
+          </section>
+
+          {/* API INTEGRATION */}
+          <section>
+            <h2 style={sectionTitleStyle}>API Integration</h2>
+            <div style={{
+              backgroundColor: '#16213e',
+              borderRadius: '16px',
+              padding: '24px',
+              border: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '20px',
+            }}>
+              {/* API Token */}
+              <div>
+                <label style={labelStyle}>API Token</label>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <div style={{ position: 'relative', flex: 1 }}>
+                    <input
+                      type={showApiToken ? 'text' : 'password'}
+                      value={apiToken}
+                      onChange={(e) => {
+                        if (apiToken && apiToken.length > 0) {
+                          // Show warning when editing existing token
+                          setTempToken(e.target.value)
+                          setPendingTokenAction('edit')
+                          setShowTokenWarning(true)
+                        } else {
+                          setApiToken(e.target.value)
+                        }
+                      }}
+                      placeholder="Paste your API token here"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <button
+                    onClick={() => setShowApiToken(!showApiToken)}
+                    style={{
+                      ...buttonSecondaryStyle,
+                      backgroundColor: 'transparent',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      color: '#a0aec0',
+                      minWidth: '80px',
+                    }}
+                  >
+                    {showApiToken ? 'Hide' : 'Show'}
+                  </button>
+                  {apiToken && (
+                    <button
+                      onClick={() => {
+                        setPendingTokenAction('clear')
+                        setShowTokenWarning(true)
+                      }}
+                      style={{
+                        ...buttonSecondaryStyle,
+                        backgroundColor: 'transparent',
+                        border: '1px solid rgba(239,68,68,0.3)',
+                        color: '#ef4444',
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <p style={{ fontSize: '12px', color: 'rgba(160,174,192,0.6)', marginTop: '8px', margin: '8px 0 0 0' }}>
+                  This token connects Open Worship with an external app for syncing songs and schedules.
+                </p>
+              </div>
+
+              {/* API Base URL */}
+              <div>
+                <label style={labelStyle}>API Base URL</label>
+                <input
+                  type="text"
+                  value={apiBaseUrl}
+                  onChange={(e) => setApiBaseUrl(e.target.value)}
+                  placeholder="https://api.example.com"
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Song Endpoint */}
+              <div>
+                <label style={labelStyle}>Song Retrieval Endpoint</label>
+                <input
+                  type="text"
+                  value={songEndpoint}
+                  onChange={(e) => setSongEndpoint(e.target.value)}
+                  placeholder="/api/songs"
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Schedule Endpoint */}
+              <div>
+                <label style={labelStyle}>Schedule Retrieval Endpoint</label>
+                <input
+                  type="text"
+                  value={scheduleEndpoint}
+                  onChange={(e) => setScheduleEndpoint(e.target.value)}
+                  placeholder="/api/schedules"
+                  style={inputStyle}
+                />
+              </div>
+
+              {/* Heartbeat Endpoint */}
+              <div>
+                <label style={labelStyle}>Heartbeat Endpoint</label>
+                <input
+                  type="text"
+                  value={heartbeatEndpoint}
+                  onChange={(e) => setHeartbeatEndpoint(e.target.value)}
+                  placeholder="/api/heartbeat"
+                  style={inputStyle}
+                />
+                <p style={{ fontSize: '12px', color: 'rgba(160,174,192,0.6)', marginTop: '8px', margin: '8px 0 0 0' }}>
+                  Checks for new songs or schedule changes at the interval below.
+                </p>
+              </div>
+
+              {/* Heartbeat Interval */}
+              <div>
+                <label style={labelStyle}>Heartbeat Interval (minutes)</label>
+                <input
+                  type="number"
+                  min="1"
+                  max="1440"
+                  value={heartbeatIntervalMinutes}
+                  onChange={(e) => setHeartbeatIntervalMinutes(Math.max(1, parseInt(e.target.value) || 60))}
+                  style={{ ...inputStyle, maxWidth: '150px' }}
+                />
+                <p style={{ fontSize: '12px', color: 'rgba(160,174,192,0.6)', marginTop: '8px', margin: '8px 0 0 0' }}>
+                  Default: 60 minutes (1 hour)
+                </p>
               </div>
             </div>
           </section>
@@ -964,6 +1119,114 @@ export default function Settings() {
                 }}
               >
                 Clear Data
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* API Token warning modal */}
+      {showTokenWarning && (
+        <div 
+          style={{ 
+            position: 'fixed', 
+            inset: 0, 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            zIndex: 50,
+            backgroundColor: 'rgba(0,0,0,0.75)' 
+          }} 
+          onClick={() => {
+            setShowTokenWarning(false)
+            setPendingTokenAction(null)
+            setTempToken('')
+          }}
+        >
+          <div 
+            style={{ 
+              borderRadius: '20px',
+              border: '1px solid rgba(255,255,255,0.1)',
+              width: '440px',
+              backgroundColor: '#16213e',
+              boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ padding: '32px', textAlign: 'center' }}>
+              <div style={{ 
+                width: '64px', 
+                height: '64px', 
+                borderRadius: '50%', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                margin: '0 auto 20px',
+                backgroundColor: 'rgba(245,158,11,0.15)',
+              }}>
+                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+              </div>
+              <h3 style={{ fontSize: '20px', fontWeight: 700, color: '#ffffff', margin: '0 0 12px' }}>
+                {pendingTokenAction === 'clear' ? 'Remove API Token?' : 'Change API Token?'}
+              </h3>
+              <p style={{ fontSize: '14px', color: '#a0aec0', lineHeight: 1.6, margin: 0 }}>
+                This token connects Open Worship with an external app where songs and schedules are synced. 
+                {pendingTokenAction === 'clear' 
+                  ? ' Removing it will disconnect the sync.'
+                  : ' Changing it may affect your sync connection.'}
+              </p>
+            </div>
+            <div style={{ display: 'flex', gap: '12px', padding: '0 24px 24px' }}>
+              <button
+                onClick={() => {
+                  setShowTokenWarning(false)
+                  setPendingTokenAction(null)
+                  setTempToken('')
+                }}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  borderRadius: '12px',
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  backgroundColor: 'transparent',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (pendingTokenAction === 'clear') {
+                    setApiToken('')
+                    showToast('API token removed')
+                  } else if (pendingTokenAction === 'edit') {
+                    setApiToken(tempToken)
+                    showToast('API token updated')
+                  }
+                  setShowTokenWarning(false)
+                  setPendingTokenAction(null)
+                  setTempToken('')
+                }}
+                style={{
+                  flex: 1,
+                  padding: '14px',
+                  borderRadius: '12px',
+                  border: 'none',
+                  backgroundColor: '#f59e0b',
+                  color: '#ffffff',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {pendingTokenAction === 'clear' ? 'Remove Token' : 'Continue'}
               </button>
             </div>
           </div>

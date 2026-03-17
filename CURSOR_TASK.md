@@ -1,60 +1,74 @@
-# Task: GitHub Pages Landing Page (#17)
+# Task: Settings - API Token & Endpoint Configuration
+
+## GitHub Issues
+- #20 - Settings: API endpoint configuration
+- #22 - Settings: API token configuration with warning
 
 ## Overview
-Create a landing page for Open Worship deployed on GitHub Pages.
+Add a new "API Integration" section in Settings.tsx for external sync configuration.
 
-## Page Structure
+## Requirements
 
-### Hero Section
-- Large "Open Worship" title
-- Tagline: "Free, open-source church presentation software"
-- Primary CTA: Download button
-- Screenshot or app preview
+### 1. API Token Field (#22)
+- Add a password/text field to paste and save an API token
+- Add a "Show/Hide" toggle for the token (password field behavior)
+- When user tries to **edit or clear** an existing token, show a warning dialog:
+  > "This token connects Open Worship with an external app where songs and schedules are synced. Are you sure you want to change/remove it?"
+- Token should be stored in the syncStore (persisted via zustand persist)
 
-### Features Section
-- Song Library: Organize your worship songs
-- Schedule Builder: Plan your services
-- Live Presenter: Present with confidence
-- NDI/OBS Integration: Stream to your production
+### 2. API Endpoint Fields (#20)
+Add the following fields:
+- **API Base URL** - Text input for the root URL (e.g., `https://api.example.com`)
+- **Song Retrieval Endpoint** - Text input for endpoint path (e.g., `/api/songs`)
+- **Schedule Retrieval Endpoint** - Text input for endpoint path (e.g., `/api/schedules`)
+- **Heartbeat Endpoint** - Text input for endpoint path (e.g., `/api/heartbeat`)
+- **Heartbeat Interval** - Number input in minutes with default of 60 (1 hour)
 
-### Download Section
-- OS-specific download buttons (Windows, macOS, Linux)
-- Links to latest GitHub Release
-- Version number
+### 3. Store Updates
+Update `syncStore.ts` to add:
+```typescript
+// New fields
+apiToken: string
+apiBaseUrl: string
+songEndpoint: string
+scheduleEndpoint: string
+heartbeatEndpoint: string
+heartbeatIntervalMinutes: number // default: 60
 
-### Quick Start
-- Brief 3-step guide
-- Link to full documentation
+// New setters
+setApiToken: (token: string) => void
+setApiBaseUrl: (url: string) => void
+setSongEndpoint: (endpoint: string) => void
+setScheduleEndpoint: (endpoint: string) => void
+setHeartbeatEndpoint: (endpoint: string) => void
+setHeartbeatIntervalMinutes: (minutes: number) => void
+```
 
-### Footer
-- GitHub link
-- Documentation link
-- License info
+### 4. UI Placement
+Add a new section in Settings.tsx called "API Integration" — place it **after** "Backend Sync" section and **before** "Display" section.
 
-## Design
-- Modern, clean design
-- Dark theme (match app: #1a1a2e, #e94560 accent)
-- Mobile responsive
-- Fast loading (minimal dependencies)
+Use the same styling patterns already in Settings.tsx:
+- Section card with `backgroundColor: '#16213e'`
+- `sectionTitleStyle` for headers
+- `inputStyle` for inputs
+- `labelStyle` for labels
+- Group related fields together
 
-## Technical
-- Single HTML file with embedded CSS
-- No build step required
-- GitHub Pages compatible
-- Place in /website folder or root docs/
+### 5. Warning Dialog
+Create a confirmation modal (similar to the existing "Clear All Data?" modal) that:
+- Shows when user tries to modify an existing token
+- Has "Cancel" and "Continue" buttons
+- Only shows if a token was previously saved (not on first save)
 
-## Files to Create
-- website/index.html - Main landing page
-- website/styles.css - Styles (or inline)
-- website/CNAME - Custom domain (optional, leave blank)
-
-## GitHub Pages Setup
-After creating files, enable in repo Settings > Pages > Source: main branch /website folder
+## Files to Modify
+1. `desktop/src/stores/syncStore.ts` - Add new state fields
+2. `desktop/src/views/Settings.tsx` - Add new UI section
 
 ## Acceptance Criteria
-- [ ] Landing page created
-- [ ] Responsive design
-- [ ] Download buttons link to releases
-- [ ] Features highlighted
-- [ ] Documentation linked
-- [ ] Ready for GitHub Pages deployment
+- [ ] All fields present in settings under "API Integration" section
+- [ ] Token field with show/hide toggle
+- [ ] Warning dialog when editing/clearing existing token
+- [ ] Default heartbeat interval of 60 minutes
+- [ ] All settings persist across app restarts (zustand persist)
+- [ ] Clear labels explaining each field's purpose
+- [ ] Consistent styling with existing settings UI
