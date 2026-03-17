@@ -46,6 +46,49 @@ export default function Presenter() {
   const [apiSchedules, setApiSchedules] = useState<Schedule[]>(() => getApiSchedules())
   const [selectedApiSchedule, setSelectedApiSchedule] = useState<Schedule | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list')
+  
+  // Session schedule items - songs added during this session (cleared on app restart)
+  // Stored in sessionStorage so it persists during the session but clears on restart
+  const [sessionItems, setSessionItems] = useState<ScheduleItem[]>(() => {
+    try {
+      const stored = sessionStorage.getItem('presenter-session-items')
+      return stored ? JSON.parse(stored) : []
+    } catch {
+      return []
+    }
+  })
+  
+  // Persist session items to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('presenter-session-items', JSON.stringify(sessionItems))
+  }, [sessionItems])
+  
+  // Add song to session schedule
+  function addSongToSession(song: Song) {
+    const newItem: ScheduleItem = {
+      id: crypto.randomUUID(),
+      scheduleId: 'session',
+      order: sessionItems.length,
+      type: 'song',
+      songId: song.id,
+      song: song,
+      customTitle: null,
+      customText: null,
+    }
+    setSessionItems(prev => [...prev, newItem])
+    showToast(`Added "${song.title}" to schedule`)
+  }
+  
+  // Remove song from session schedule
+  function removeSessionItem(itemId: string) {
+    setSessionItems(prev => prev.filter(item => item.id !== itemId))
+  }
+  
+  // Clear all session items
+  function clearSessionItems() {
+    setSessionItems([])
+    showToast('Schedule cleared')
+  }
 
   useEffect(() => { loadBackgrounds() }, [])
   
@@ -146,8 +189,10 @@ export default function Presenter() {
 
   const items = activeSchedule?.items ?? []
   
-  // If viewing an API schedule, use its items instead
-  const displayItems = selectedApiSchedule?.items ?? items
+  // Combine API schedule items with session items
+  // Session items are songs added during this session
+  const apiScheduleItems = selectedApiSchedule?.items ?? []
+  const displayItems = [...apiScheduleItems, ...sessionItems]
 
   // Filter songs by search
   const filteredSongs = songs.filter(song => {
@@ -158,8 +203,9 @@ export default function Presenter() {
   })
 
   // Get the selected schedule item or direct song
-  // Check both local schedule items and API schedule items
+  // Check API schedule items, session items, and local schedule items
   const selectedItem = selectedApiSchedule?.items?.find(i => i.id === selectedItemId) 
+    ?? sessionItems.find(i => i.id === selectedItemId)
     ?? items.find(i => i.id === selectedItemId)
   const selectedSong = songs.find(s => s.id === selectedSongId)
   
@@ -300,35 +346,9 @@ export default function Presenter() {
     setSelectedVerseIndex(0)
   }
 
-  async function handleAddSongToSchedule(song: Song) {
-    let schedule = activeSchedule
-    
-    // Create a schedule if none exists
-    if (!schedule) {
-      const { addSchedule, setActiveSchedule } = useScheduleStore.getState()
-      const now = new Date().toISOString()
-      const newSchedule = {
-        id: crypto.randomUUID(),
-        name: 'Sunday Service',
-        date: new Date().toISOString().split('T')[0],
-        notes: '',
-        items: [],
-        createdAt: now,
-        updatedAt: now,
-      }
-      await addSchedule(newSchedule)
-      setActiveSchedule(newSchedule)
-      schedule = newSchedule
-    }
-    
-    const item: ScheduleItem = {
-      id: crypto.randomUUID(),
-      order: schedule.items.length,
-      type: 'song',
-      song,
-    }
-    await addItem(schedule.id, item)
-    showToast(`"${song.title}" added to schedule`)
+  function handleAddSongToSchedule(song: Song) {
+    // Add to session schedule (not persisted to DB, cleared on app restart)
+    addSongToSession(song)
   }
 
   function handleSelectVerse(index: number) {
@@ -766,50 +786,93 @@ export default function Presenter() {
                   )}
                 </div>
               ) : (
-                /* Default: show local schedule items or empty state */
+                /* Default: show schedule items + session items */
                 <div style={{ flex: 1, overflowY: 'auto' }}>
-                  {displayItems.length === 0 ? (
-                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0', fontSize: '13px' }}>
-                      {apiToken && apiBaseUrl ? 'Click Sync to load schedules' : 'No items in schedule'}
-                    </div>
-                  ) : (
-                    displayItems.map((item, idx) => (
-                      <div
-                        key={item.id}
-                        onClick={() => handleSelectItem(item)}
+                  {/* Clear session button if there are session items */}
+                  {sessionItems.length > 0 && (
+                    <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                      <button
+                        onClick={clearSessionItems}
                         style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '10px',
-                          padding: '12px 16px',
+                          width: '100%',
+                          padding: '6px 12px',
+                          borderRadius: '6px',
+                          backgroundColor: 'rgba(239,68,68,0.1)',
+                          color: '#ef4444',
+                          border: '1px solid rgba(239,68,68,0.2)',
                           cursor: 'pointer',
-                          backgroundColor: selectedItemId === item.id ? 'rgba(233,69,96,0.15)' : 'transparent',
-                          borderLeft: selectedItemId === item.id ? '3px solid #e94560' : '3px solid transparent',
+                          fontSize: '11px',
+                          fontWeight: 500,
                         }}
                       >
-                        <span style={{ 
-                          fontSize: '11px', 
-                          color: 'rgba(160,174,192,0.5)', 
-                          fontFamily: 'monospace',
-                          width: '16px',
-                        }}>
-                          {idx + 1}
-                        </span>
-                        <span style={{ color: item.type === 'song' ? '#e94560' : '#a0aec0' }}>
-                          {getItemIcon(item.type)}
-                        </span>
-                        <span style={{ 
-                          fontSize: '13px', 
-                          color: '#ffffff',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
-                          flex: 1,
-                        }}>
-                          {getItemTitle(item)}
-                        </span>
-                      </div>
-                    ))
+                        Clear Added Songs ({sessionItems.length})
+                      </button>
+                    </div>
+                  )}
+                  {displayItems.length === 0 ? (
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0', fontSize: '13px' }}>
+                      {apiToken && apiBaseUrl ? 'Click Sync to load schedules or add songs from Songs tab' : 'Add songs from Songs tab'}
+                    </div>
+                  ) : (
+                    displayItems.map((item, idx) => {
+                      const isSessionItem = sessionItems.some(si => si.id === item.id)
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => handleSelectItem(item)}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '10px',
+                            padding: '12px 16px',
+                            cursor: 'pointer',
+                            backgroundColor: selectedItemId === item.id ? 'rgba(233,69,96,0.15)' : 'transparent',
+                            borderLeft: selectedItemId === item.id ? '3px solid #e94560' : '3px solid transparent',
+                          }}
+                        >
+                          <span style={{ 
+                            fontSize: '11px', 
+                            color: 'rgba(160,174,192,0.5)', 
+                            fontFamily: 'monospace',
+                            width: '16px',
+                          }}>
+                            {idx + 1}
+                          </span>
+                          <span style={{ color: item.type === 'song' ? '#e94560' : '#a0aec0' }}>
+                            {getItemIcon(item.type)}
+                          </span>
+                          <span style={{ 
+                            fontSize: '13px', 
+                            color: '#ffffff',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            flex: 1,
+                          }}>
+                            {getItemTitle(item)}
+                          </span>
+                          {isSessionItem && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); removeSessionItem(item.id) }}
+                              title="Remove from schedule"
+                              style={{
+                                padding: '4px',
+                                borderRadius: '4px',
+                                backgroundColor: 'transparent',
+                                color: '#a0aec0',
+                                border: 'none',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })
                   )}
                 </div>
               )}
