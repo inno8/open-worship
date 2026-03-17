@@ -551,8 +551,8 @@ export default function Presenter() {
         
         {/* Schedule/Songs Panel with Tabs */}
         <div style={{ 
-          width: '280px', 
-          minWidth: '280px',
+          width: '340px', 
+          minWidth: '340px',
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: '#16213e',
@@ -914,8 +914,8 @@ export default function Presenter() {
 
         {/* Verses Panel */}
         <div style={{ 
-          width: '300px',
-          minWidth: '300px',
+          width: '360px',
+          minWidth: '360px',
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: '#16213e',
@@ -990,7 +990,7 @@ export default function Presenter() {
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          minWidth: '300px',
+          minWidth: '200px',
         }}>
           <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
             {/* Preview Output */}
