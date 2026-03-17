@@ -108,7 +108,19 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
         padding: 24,
       }}
     >
-      {/* Stylized logo */}
+      {/* Logo */}
+      <img 
+        src="/assets/icons/icon.svg" 
+        alt="Open Worship" 
+        style={{ 
+          width: 120, 
+          height: 120,
+          marginBottom: 24,
+          filter: 'drop-shadow(0 0 40px rgba(233,69,96,0.3))',
+        }} 
+      />
+      
+      {/* App name */}
       <h1
         style={{
           margin: 0,
@@ -119,7 +131,6 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           WebkitBackgroundClip: 'text',
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text',
-          textShadow: '0 0 40px rgba(233,69,96,0.2)',
         }}
       >
         Open Worship

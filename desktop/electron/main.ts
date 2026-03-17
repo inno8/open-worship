@@ -22,12 +22,18 @@ let presentationWindow: BrowserWindow | null = null
 const isDev = process.env.NODE_ENV === 'development'
 
 function createMainWindow() {
+  // Get icon path based on platform
+  const iconPath = isDev 
+    ? path.join(__dirname, '../public/assets/icons/icon.png')
+    : path.join(__dirname, '../dist/assets/icons/icon.png')
+  
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 1000,
     minHeight: 700,
     title: 'Open Worship',
+    icon: iconPath,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
