@@ -4,6 +4,7 @@ import { useSongStore } from '../stores/songStore'
 import { useScheduleStore } from '../stores/scheduleStore'
 import { useSyncStore } from '../stores/syncStore'
 import { wsSync } from '../services/WebSocketSync'
+import { restartHeartbeat } from '../services/heartbeatService'
 
 interface DisplayInfo {
   id: number
@@ -340,7 +341,11 @@ export default function Settings() {
                     <input
                       type={showApiToken ? 'text' : 'password'}
                       value={apiToken}
-                      onChange={(e) => setApiToken(e.target.value)}
+                      onChange={(e) => {
+                        setApiToken(e.target.value)
+                        // Restart heartbeat when token changes
+                        setTimeout(() => restartHeartbeat(), 100)
+                      }}
                       placeholder="Paste your API token here"
                       style={inputStyle}
                     />
@@ -385,7 +390,11 @@ export default function Settings() {
                 <input
                   type="text"
                   value={apiBaseUrl}
-                  onChange={(e) => setApiBaseUrl(e.target.value)}
+                  onChange={(e) => {
+                    setApiBaseUrl(e.target.value)
+                    // Restart heartbeat when base URL changes
+                    setTimeout(() => restartHeartbeat(), 100)
+                  }}
                   placeholder="https://api.example.com"
                   style={inputStyle}
                 />
@@ -438,7 +447,12 @@ export default function Settings() {
                   min="1"
                   max="1440"
                   value={heartbeatIntervalMinutes}
-                  onChange={(e) => setHeartbeatIntervalMinutes(Math.max(1, parseInt(e.target.value) || 60))}
+                  onChange={(e) => {
+                    const newValue = Math.max(1, parseInt(e.target.value) || 60)
+                    setHeartbeatIntervalMinutes(newValue)
+                    // Restart heartbeat with new interval
+                    setTimeout(() => restartHeartbeat(), 100)
+                  }}
                   style={{ ...inputStyle, maxWidth: '150px' }}
                 />
                 <p style={{ fontSize: '12px', color: 'rgba(160,174,192,0.6)', marginTop: '8px', margin: '8px 0 0 0' }}>
@@ -1197,9 +1211,13 @@ export default function Settings() {
                   if (pendingTokenAction === 'clear') {
                     setApiToken('')
                     showToast('API token removed')
+                    // Stop heartbeat when token is removed
+                    setTimeout(() => restartHeartbeat(), 100)
                   } else if (pendingTokenAction === 'edit') {
                     setApiToken(tempToken)
                     showToast('API token updated')
+                    // Restart heartbeat with new token
+                    setTimeout(() => restartHeartbeat(), 100)
                   }
                   setShowTokenWarning(false)
                   setPendingTokenAction(null)

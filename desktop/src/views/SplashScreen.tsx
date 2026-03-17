@@ -4,6 +4,7 @@ import { useScheduleStore } from '../stores/scheduleStore'
 import { usePresentationStore } from '../stores/presentationStore'
 import { registerSyncHandlers } from '../services/registerSyncHandlers'
 import { wsSync } from '../services/WebSocketSync'
+import { startHeartbeat, requestNotificationPermission } from '../services/heartbeatService'
 
 interface SplashScreenProps {
   onComplete: () => void
@@ -37,6 +38,13 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           fn: () => {
             registerSyncHandlers()
             wsSync.connect()
+          },
+        },
+        {
+          msg: 'Starting heartbeat…',
+          fn: () => {
+            requestNotificationPermission()
+            startHeartbeat()
           },
         },
       ]
