@@ -163,9 +163,46 @@ export default function Presenter() {
     ?? items.find(i => i.id === selectedItemId)
   const selectedSong = songs.find(s => s.id === selectedSongId)
   
+  // For schedule items, try to get lyrics from:
+  // 1. The embedded song in the schedule item
+  // 2. Look up the song in local DB by songId or by title match
+  const getScheduleItemSong = (): Song | null => {
+    if (!selectedItem || selectedItem.type !== 'song') return null
+    
+    // If the item has embedded song with lyrics, use it
+    if (selectedItem.song?.lyrics && selectedItem.song.lyrics.trim()) {
+      return selectedItem.song
+    }
+    
+    // Try to find song in local DB by ID
+    if (selectedItem.songId) {
+      const dbSong = songs.find(s => s.id === selectedItem.songId)
+      if (dbSong) return dbSong
+    }
+    
+    // Try to find by song ID from embedded song
+    if (selectedItem.song?.id) {
+      const dbSong = songs.find(s => s.id === selectedItem.song!.id)
+      if (dbSong) return dbSong
+    }
+    
+    // Try to match by title
+    if (selectedItem.song?.title) {
+      const dbSong = songs.find(s => 
+        s.title.toLowerCase() === selectedItem.song!.title.toLowerCase()
+      )
+      if (dbSong) return dbSong
+    }
+    
+    // Fall back to embedded song (even if no lyrics)
+    return selectedItem.song || null
+  }
+  
+  const scheduleItemSong = getScheduleItemSong()
+  
   // Parse verses - from schedule item or direct song
-  const verses: Section[] = activeTab === 'schedule' && selectedItem?.type === 'song' && selectedItem.song
-    ? parseLyrics(selectedItem.song.lyrics)
+  const verses: Section[] = activeTab === 'schedule' && selectedItem?.type === 'song' && scheduleItemSong
+    ? parseLyrics(scheduleItemSong.lyrics || '')
     : activeTab === 'schedule' && selectedItem?.type === 'custom' && selectedItem.customText
     ? [{ type: 'Custom', lines: selectedItem.customText.split('\n').filter(l => l.trim()) }]
     : activeTab === 'schedule' && selectedItem?.type === 'blank'
@@ -182,8 +219,8 @@ export default function Presenter() {
     : 'Select an item'
 
   // Effective background: slide override > song bg > default
-  const activeSong = activeTab === 'schedule' && selectedItem?.type === 'song' && selectedItem.song
-    ? selectedItem.song
+  const activeSong = activeTab === 'schedule' && selectedItem?.type === 'song' && scheduleItemSong
+    ? scheduleItemSong
     : activeTab === 'songs' && selectedSong
     ? selectedSong
     : null
