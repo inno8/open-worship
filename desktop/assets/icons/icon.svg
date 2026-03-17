@@ -1,0 +1,16 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer ring with gradient feel -->
+  <circle cx="256" cy="256" r="248" fill="#e94560"/>
+  
+  <!-- Inner dark circle (like a screen) -->
+  <circle cx="256" cy="256" r="190" fill="#16213e"/>
+  
+  <!-- Centered text lines - lyrics visualization -->
+  <rect x="126" y="175" width="180" height="18" rx="9" fill="#ffffff"/>
+  <rect x="106" y="215" width="220" height="18" rx="9" fill="#ffffff" opacity="0.75"/>
+  <rect x="136" y="255" width="160" height="18" rx="9" fill="#ffffff"/>
+  <rect x="116" y="295" width="200" height="18" rx="9" fill="#ffffff" opacity="0.75"/>
+  
+  <!-- Subtle glow/accent at bottom -->
+  <ellipse cx="256" cy="380" rx="80" ry="20" fill="#e94560" opacity="0.3"/>
+</svg>

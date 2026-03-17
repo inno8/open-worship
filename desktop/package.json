@@ -37,7 +37,9 @@
     "electron": "^36.3.0",
     "electron-builder": "^26.0.6",
     "electron-rebuild": "^3.2.9",
+    "png-to-ico": "^3.0.1",
     "postcss": "^8.5.8",
+    "sharp": "^0.34.5",
     "typescript": "^5.8.3",
     "vite": "^6.3.4",
     "vite-plugin-electron": "^0.29.1",
@@ -63,24 +65,32 @@
       "node_modules/**/*"
     ],
     "win": {
-      "target": ["nsis", "zip"],
-      "icon": "build/icon.ico"
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "icon": "assets/icons/icon.ico"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico"
+      "installerIcon": "assets/icons/icon.ico",
+      "uninstallerIcon": "assets/icons/icon.ico",
+      "installerHeaderIcon": "assets/icons/icon.ico"
     },
     "mac": {
-      "target": ["dmg"],
-      "icon": "build/icon.icns",
+      "target": [
+        "dmg"
+      ],
+      "icon": "assets/icons/icon.png",
       "category": "public.app-category.utilities"
     },
     "linux": {
-      "target": ["AppImage", "deb"],
-      "icon": "build/icons",
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icons",
       "category": "Utility"
     },
     "publish": {
