@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from 'react'
 import { usePresentationStore, getBackgroundStyle } from '../stores/presentationStore'
-import { useScheduleStore, ScheduleItem } from '../stores/scheduleStore'
+import { useScheduleStore, ScheduleItem, Schedule } from '../stores/scheduleStore'
 import { useSongStore, parseLyrics, Section, Song } from '../stores/songStore'
 import { useNdiOutput } from '../ndi/useNdiOutput'
+import { useSyncStore } from '../stores/syncStore'
+import { fetchSchedulesFromApi, apiScheduleToLocal } from '../services/apiSync'
 
 export default function Presenter() {
   useNdiOutput()
@@ -23,8 +25,9 @@ export default function Presenter() {
     ndiMockMode,
   } = usePresentationStore()
 
-  const { activeSchedule, addItem } = useScheduleStore()
+  const { activeSchedule, addItem, setSchedules, setActiveSchedule, schedules } = useScheduleStore()
   const { songs } = useSongStore()
+  const { apiToken, apiBaseUrl } = useSyncStore()
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'songs'>('schedule')
   const [songSearch, setSongSearch] = useState('')
@@ -35,6 +38,12 @@ export default function Presenter() {
   const [toast, setToast] = useState<string | null>(null)
   const [slideOverrideBg, setSlideOverrideBg] = useState<string | null>(null)
   const [showBgPicker, setShowBgPicker] = useState(false)
+  const [isSyncingSchedules, setIsSyncingSchedules] = useState(false)
+  
+  // API schedules state for schedule list view
+  const [apiSchedules, setApiSchedules] = useState<Schedule[]>([])
+  const [selectedApiSchedule, setSelectedApiSchedule] = useState<Schedule | null>(null)
+  const [viewMode, setViewMode] = useState<'list' | 'detail'>('list')
 
   useEffect(() => { loadBackgrounds() }, [])
 
@@ -43,7 +52,62 @@ export default function Presenter() {
     setTimeout(() => setToast(null), 3000)
   }, [])
 
+  // Sync schedules from external API
+  async function handleSyncSchedules() {
+    if (!apiToken || !apiBaseUrl) {
+      showToast('Configure API settings first')
+      return
+    }
+
+    setIsSyncingSchedules(true)
+    try {
+      const result = await fetchSchedulesFromApi()
+      
+      if (!result.success) {
+        showToast(result.error || 'Sync failed')
+        setIsSyncingSchedules(false)
+        return
+      }
+
+      const fetchedSchedules = (result.data || []).map(apiScheduleToLocal)
+      
+      // Filter to current and future schedules
+      const today = new Date().toISOString().split('T')[0]
+      const currentAndFuture = fetchedSchedules.filter(s => !s.date || s.date >= today)
+      
+      setApiSchedules(currentAndFuture)
+      setViewMode('list')
+      setSelectedApiSchedule(null)
+      
+      showToast(`Found ${currentAndFuture.length} schedule${currentAndFuture.length !== 1 ? 's' : ''}`)
+    } catch (error) {
+      console.error('Schedule sync error:', error)
+      showToast('Sync failed: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    }
+    setIsSyncingSchedules(false)
+  }
+
+  // Handle clicking on a schedule from the API list
+  function handleSelectApiSchedule(schedule: Schedule) {
+    setSelectedApiSchedule(schedule)
+    setViewMode('detail')
+    // Auto-select first item if available
+    if (schedule.items && schedule.items.length > 0) {
+      setSelectedItemId(schedule.items[0].id)
+    }
+  }
+
+  // Go back to schedule list
+  function handleBackToList() {
+    setViewMode('list')
+    setSelectedApiSchedule(null)
+    setSelectedItemId(null)
+  }
+
   const items = activeSchedule?.items ?? []
+  
+  // If viewing an API schedule, use its items instead
+  const displayItems = selectedApiSchedule?.items ?? items
 
   // Filter songs by search
   const filteredSongs = songs.filter(song => {
@@ -54,7 +118,9 @@ export default function Presenter() {
   })
 
   // Get the selected schedule item or direct song
-  const selectedItem = items.find(i => i.id === selectedItemId)
+  // Check both local schedule items and API schedule items
+  const selectedItem = selectedApiSchedule?.items?.find(i => i.id === selectedItemId) 
+    ?? items.find(i => i.id === selectedItemId)
   const selectedSong = songs.find(s => s.id === selectedSongId)
   
   // Parse verses - from schedule item or direct song
@@ -456,49 +522,219 @@ export default function Presenter() {
 
           {/* Tab Content */}
           {activeTab === 'schedule' ? (
-            <div style={{ flex: 1, overflowY: 'auto' }}>
-              {items.length === 0 ? (
-                <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0', fontSize: '13px' }}>
-                  No items in schedule
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+              {/* Sync button and back button */}
+              {apiToken && apiBaseUrl && (
+                <div style={{ padding: '8px 12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                  {viewMode === 'detail' && selectedApiSchedule ? (
+                    <button
+                      onClick={handleBackToList}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        color: '#a0aec0',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        width: '100%',
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                      </svg>
+                      Back to Schedules
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleSyncSchedules}
+                      disabled={isSyncingSchedules}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        padding: '8px 12px',
+                        borderRadius: '8px',
+                        backgroundColor: isSyncingSchedules ? 'rgba(15,52,96,0.5)' : '#0f3460',
+                        color: '#ffffff',
+                        border: 'none',
+                        cursor: isSyncingSchedules ? 'not-allowed' : 'pointer',
+                        fontSize: '12px',
+                        width: '100%',
+                      }}
+                    >
+                      {isSyncingSchedules ? (
+                        <>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'pulse 1s ease-in-out infinite' }}>
+                            <path d="M21 12a9 9 0 11-6.219-8.56" />
+                          </svg>
+                          Syncing...
+                        </>
+                      ) : (
+                        <>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                            <path d="M21 2v6h-6M3 12a9 9 0 0115-6.7L21 8M3 22v-6h6M21 12a9 9 0 01-15 6.7L3 16" />
+                          </svg>
+                          Sync Schedules
+                        </>
+                      )}
+                    </button>
+                  )}
+                </div>
+              )}
+
+              {/* Schedule list view (API schedules) */}
+              {viewMode === 'list' && apiSchedules.length > 0 ? (
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {apiSchedules.map((schedule) => (
+                    <div
+                      key={schedule.id}
+                      onClick={() => handleSelectApiSchedule(schedule)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '10px',
+                        padding: '12px 16px',
+                        cursor: 'pointer',
+                        backgroundColor: 'transparent',
+                        borderLeft: '3px solid transparent',
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)'}
+                      onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#e94560" strokeWidth="2">
+                        <rect x="3" y="4" width="18" height="18" rx="2" />
+                        <path d="M16 2v4M8 2v4M3 10h18" />
+                      </svg>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ 
+                          fontSize: '13px', 
+                          color: '#ffffff',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                        }}>
+                          {schedule.name}
+                        </div>
+                        {schedule.date && (
+                          <div style={{ fontSize: '11px', color: '#a0aec0' }}>
+                            {schedule.date}
+                          </div>
+                        )}
+                      </div>
+                      <span style={{ fontSize: '11px', color: '#a0aec0' }}>
+                        {schedule.items?.length || 0} items
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : viewMode === 'detail' && selectedApiSchedule ? (
+                /* Detail view - show schedule items */
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: '#ffffff' }}>{selectedApiSchedule.name}</div>
+                    {selectedApiSchedule.date && (
+                      <div style={{ fontSize: '11px', color: '#a0aec0', marginTop: '4px' }}>{selectedApiSchedule.date}</div>
+                    )}
+                  </div>
+                  {selectedApiSchedule.items && selectedApiSchedule.items.length > 0 ? (
+                    selectedApiSchedule.items.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        onClick={() => {
+                          setSelectedItemId(item.id)
+                          setSelectedVerseIndex(0)
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '12px 16px',
+                          cursor: 'pointer',
+                          backgroundColor: selectedItemId === item.id ? 'rgba(233,69,96,0.15)' : 'transparent',
+                          borderLeft: selectedItemId === item.id ? '3px solid #e94560' : '3px solid transparent',
+                        }}
+                      >
+                        <span style={{ 
+                          fontSize: '11px', 
+                          color: 'rgba(160,174,192,0.5)', 
+                          fontFamily: 'monospace',
+                          width: '16px',
+                        }}>
+                          {idx + 1}
+                        </span>
+                        <span style={{ color: item.type === 'song' ? '#e94560' : '#a0aec0' }}>
+                          {getItemIcon(item.type)}
+                        </span>
+                        <span style={{ 
+                          fontSize: '13px', 
+                          color: '#ffffff',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          flex: 1,
+                        }}>
+                          {getItemTitle(item)}
+                        </span>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0', fontSize: '13px' }}>
+                      No items in this schedule
+                    </div>
+                  )}
                 </div>
               ) : (
-                items.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    onClick={() => handleSelectItem(item)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '10px',
-                      padding: '12px 16px',
-                      cursor: 'pointer',
-                      backgroundColor: selectedItemId === item.id ? 'rgba(233,69,96,0.15)' : 'transparent',
-                      borderLeft: selectedItemId === item.id ? '3px solid #e94560' : '3px solid transparent',
-                    }}
-                  >
-                    <span style={{ 
-                      fontSize: '11px', 
-                      color: 'rgba(160,174,192,0.5)', 
-                      fontFamily: 'monospace',
-                      width: '16px',
-                    }}>
-                      {idx + 1}
-                    </span>
-                    <span style={{ color: item.type === 'song' ? '#e94560' : '#a0aec0' }}>
-                      {getItemIcon(item.type)}
-                    </span>
-                    <span style={{ 
-                      fontSize: '13px', 
-                      color: '#ffffff',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      flex: 1,
-                    }}>
-                      {getItemTitle(item)}
-                    </span>
-                  </div>
-                ))
+                /* Default: show local schedule items or empty state */
+                <div style={{ flex: 1, overflowY: 'auto' }}>
+                  {displayItems.length === 0 ? (
+                    <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0', fontSize: '13px' }}>
+                      {apiToken && apiBaseUrl ? 'Click Sync to load schedules' : 'No items in schedule'}
+                    </div>
+                  ) : (
+                    displayItems.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        onClick={() => handleSelectItem(item)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '10px',
+                          padding: '12px 16px',
+                          cursor: 'pointer',
+                          backgroundColor: selectedItemId === item.id ? 'rgba(233,69,96,0.15)' : 'transparent',
+                          borderLeft: selectedItemId === item.id ? '3px solid #e94560' : '3px solid transparent',
+                        }}
+                      >
+                        <span style={{ 
+                          fontSize: '11px', 
+                          color: 'rgba(160,174,192,0.5)', 
+                          fontFamily: 'monospace',
+                          width: '16px',
+                        }}>
+                          {idx + 1}
+                        </span>
+                        <span style={{ color: item.type === 'song' ? '#e94560' : '#a0aec0' }}>
+                          {getItemIcon(item.type)}
+                        </span>
+                        <span style={{ 
+                          fontSize: '13px', 
+                          color: '#ffffff',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          flex: 1,
+                        }}>
+                          {getItemTitle(item)}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
               )}
             </div>
           ) : (

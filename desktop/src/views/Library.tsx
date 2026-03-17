@@ -2,6 +2,8 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { useSongStore, parseLyrics, autoFormatLyrics, Song } from '../stores/songStore'
 import { useScheduleStore } from '../stores/scheduleStore'
 import { usePresentationStore, getBackgroundStyle } from '../stores/presentationStore'
+import { useSyncStore } from '../stores/syncStore'
+import { fetchSongsFromApi, apiSongToLocal } from '../services/apiSync'
 
 // Parse a text file to extract song info
 // Supports formats:
@@ -74,6 +76,7 @@ export default function Library() {
 
   const { activeSchedule, addItem } = useScheduleStore()
   const { backgrounds, loadBackgrounds } = usePresentationStore()
+  const { apiToken, apiBaseUrl } = useSyncStore()
 
   const [showAddModal, setShowAddModal] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
@@ -81,6 +84,7 @@ export default function Library() {
   const [toast, setToast] = useState<string | null>(null)
   const [isEditing, setIsEditing] = useState(false)
   const [editingSongId, setEditingSongId] = useState<string | null>(null)
+  const [isSyncing, setIsSyncing] = useState(false)
 
   useEffect(() => { loadBackgrounds() }, [])
 
@@ -142,6 +146,58 @@ export default function Library() {
     setToast(message)
     setTimeout(() => setToast(null), 3000)
   }, [])
+
+  // Sync songs from external API
+  async function handleSyncSongs() {
+    if (!apiToken || !apiBaseUrl) {
+      showToast('Configure API settings first')
+      return
+    }
+
+    setIsSyncing(true)
+    try {
+      const result = await fetchSongsFromApi()
+      
+      if (!result.success) {
+        showToast(result.error || 'Sync failed')
+        setIsSyncing(false)
+        return
+      }
+
+      const apiSongs = result.data || []
+      let addedCount = 0
+      let skippedCount = 0
+
+      for (const apiSong of apiSongs) {
+        // Check if song already exists (by ID or title+author combo)
+        const exists = songs.some(
+          s => s.id === apiSong.id || 
+               (s.title.toLowerCase() === apiSong.title.toLowerCase() && 
+                s.author.toLowerCase() === (apiSong.author || '').toLowerCase())
+        )
+
+        if (!exists) {
+          const localSong = apiSongToLocal(apiSong)
+          await addSong(localSong)
+          addedCount++
+        } else {
+          skippedCount++
+        }
+      }
+
+      if (addedCount > 0) {
+        showToast(`Added ${addedCount} new song${addedCount > 1 ? 's' : ''}`)
+      } else if (skippedCount > 0) {
+        showToast('All songs already in library')
+      } else {
+        showToast('No songs found from API')
+      }
+    } catch (error) {
+      console.error('Sync error:', error)
+      showToast('Sync failed: ' + (error instanceof Error ? error.message : 'Unknown error'))
+    }
+    setIsSyncing(false)
+  }
 
   const filteredSongs = songs.filter((song) => {
     const q = searchQuery.toLowerCase()
@@ -737,7 +793,7 @@ export default function Library() {
           ))}
         </div>
 
-        <div style={{ padding: '20px 24px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+        <div style={{ padding: '20px 24px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <button
             onClick={openAddModal}
             style={{
@@ -754,6 +810,43 @@ export default function Library() {
           >
             + Add Song
           </button>
+          {apiToken && apiBaseUrl && (
+            <button
+              onClick={handleSyncSongs}
+              disabled={isSyncing}
+              style={{
+                width: '100%',
+                padding: '14px',
+                borderRadius: '14px',
+                backgroundColor: isSyncing ? 'rgba(15,52,96,0.5)' : '#0f3460',
+                color: '#ffffff',
+                fontWeight: 600,
+                fontSize: '14px',
+                border: 'none',
+                cursor: isSyncing ? 'not-allowed' : 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
+            >
+              {isSyncing ? (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}>
+                    <path d="M21 12a9 9 0 11-6.219-8.56" />
+                  </svg>
+                  Syncing...
+                </>
+              ) : (
+                <>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M21 2v6h-6M3 12a9 9 0 0115-6.7L21 8M3 22v-6h6M21 12a9 9 0 01-15 6.7L3 16" />
+                  </svg>
+                  Sync from API
+                </>
+              )}
+            </button>
+          )}
         </div>
       </div>
 
@@ -1098,6 +1191,13 @@ export default function Library() {
         onChange={handleFileImport}
         style={{ display: 'none' }}
       />
+
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </div>
   )
 }
