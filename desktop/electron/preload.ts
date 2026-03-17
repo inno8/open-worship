@@ -96,6 +96,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.invoke('ndi:sendFrame', frameData),
     setSourceName: (name: string) => ipcRenderer.invoke('ndi:setSourceName', name),
   },
+
+  // ============ API PROXY (CORS bypass) ============
+  apiFetch: (options: { url: string; method?: string; headers?: Record<string, string>; body?: string }) =>
+    ipcRenderer.invoke('api:fetch', options) as Promise<{ ok: boolean; status: number; statusText: string; data: unknown }>,
+
+  // ============ WINDOW ============
+  focusWindow: () => ipcRenderer.invoke('window:focus'),
 })
 
 // Type definitions are in src/types/electron.d.ts

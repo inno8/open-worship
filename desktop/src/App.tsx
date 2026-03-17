@@ -6,6 +6,8 @@ import Presenter from './views/Presenter'
 import Settings from './views/Settings'
 import SplashScreen from './views/SplashScreen'
 import { wsSync } from './services/WebSocketSync'
+import { startHeartbeat, stopHeartbeat, requestNotificationPermission } from './services/heartbeatService'
+import { useSyncStore } from './stores/syncStore'
 
 type View = 'splash' | 'library' | 'schedule' | 'presenter' | 'settings'
 
@@ -38,6 +40,34 @@ function App() {
     if (window.location.hash === '#/presentation') return
     return () => wsSync.disconnect()
   }, [])
+
+  // Heartbeat service for API sync notifications
+  const { apiToken, apiBaseUrl, heartbeatIntervalMinutes } = useSyncStore()
+  
+  useEffect(() => {
+    if (window.location.hash === '#/presentation') return
+    
+    // Request notification permission on app start
+    requestNotificationPermission()
+    
+    // Start heartbeat if API is configured
+    if (apiToken && apiBaseUrl) {
+      startHeartbeat()
+    }
+    
+    return () => stopHeartbeat()
+  }, [])
+
+  // Restart heartbeat when settings change
+  useEffect(() => {
+    if (window.location.hash === '#/presentation') return
+    
+    if (apiToken && apiBaseUrl) {
+      startHeartbeat()
+    } else {
+      stopHeartbeat()
+    }
+  }, [apiToken, apiBaseUrl, heartbeatIntervalMinutes])
 
   const isPresentation = window.location.hash === '#/presentation'
 

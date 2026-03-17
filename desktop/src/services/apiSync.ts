@@ -58,6 +58,49 @@ function buildUrl(baseUrl: string, endpoint: string): string {
   return `${base}${path}`
 }
 
+// Helper to make API requests - uses Electron proxy if available (bypasses CORS)
+async function apiFetch(url: string, options: { method?: string; headers?: Record<string, string>; body?: string } = {}): Promise<{ ok: boolean; status: number; statusText: string; data: unknown }> {
+  // If in Electron, use the IPC proxy to bypass CORS
+  if (window.electronAPI?.apiFetch) {
+    return window.electronAPI.apiFetch({
+      url,
+      method: options.method || 'GET',
+      headers: options.headers || {},
+      body: options.body,
+    })
+  }
+
+  // Fallback to browser fetch (may fail due to CORS in dev mode)
+  try {
+    const response = await fetch(url, {
+      method: options.method || 'GET',
+      headers: options.headers,
+      body: options.body,
+    })
+
+    let data: unknown
+    try {
+      data = await response.json()
+    } catch {
+      data = await response.text()
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      statusText: error instanceof Error ? error.message : 'Unknown error',
+      data: null,
+    }
+  }
+}
+
 export async function fetchSongsFromApi(): Promise<SyncResult<ApiSong[]>> {
   const config = getConfig()
   
@@ -67,7 +110,7 @@ export async function fetchSongsFromApi(): Promise<SyncResult<ApiSong[]>> {
 
   try {
     const url = buildUrl(config.apiBaseUrl, config.songEndpoint)
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${config.apiToken}`,
@@ -79,9 +122,9 @@ export async function fetchSongsFromApi(): Promise<SyncResult<ApiSong[]>> {
       return { success: false, error: `API error: ${response.status} ${response.statusText}` }
     }
 
-    const data = await response.json()
+    const data = response.data as Record<string, unknown>
     // Handle both array response and { songs: [...] } response
-    const songs: ApiSong[] = Array.isArray(data) ? data : (data.songs || data.data || [])
+    const songs: ApiSong[] = Array.isArray(data) ? data : ((data?.songs || data?.data || []) as ApiSong[])
     
     return { success: true, data: songs }
   } catch (error) {
@@ -98,7 +141,7 @@ export async function fetchSchedulesFromApi(): Promise<SyncResult<ApiSchedule[]>
 
   try {
     const url = buildUrl(config.apiBaseUrl, config.scheduleEndpoint)
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${config.apiToken}`,
@@ -110,9 +153,9 @@ export async function fetchSchedulesFromApi(): Promise<SyncResult<ApiSchedule[]>
       return { success: false, error: `API error: ${response.status} ${response.statusText}` }
     }
 
-    const data = await response.json()
+    const data = response.data as Record<string, unknown>
     // Handle both array response and { schedules: [...] } response
-    const schedules: ApiSchedule[] = Array.isArray(data) ? data : (data.schedules || data.data || [])
+    const schedules: ApiSchedule[] = Array.isArray(data) ? data : ((data?.schedules || data?.data || []) as ApiSchedule[])
     
     return { success: true, data: schedules }
   } catch (error) {
@@ -129,7 +172,7 @@ export async function checkHeartbeat(): Promise<SyncResult<{ hasNewSongs: boolea
 
   try {
     const url = buildUrl(config.apiBaseUrl, config.heartbeatEndpoint)
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${config.apiToken}`,
@@ -141,12 +184,12 @@ export async function checkHeartbeat(): Promise<SyncResult<{ hasNewSongs: boolea
       return { success: false, error: `API error: ${response.status} ${response.statusText}` }
     }
 
-    const data = await response.json()
+    const data = response.data as Record<string, unknown>
     return { 
       success: true, 
       data: {
-        hasNewSongs: data.hasNewSongs || data.newSongs || false,
-        hasNewSchedules: data.hasNewSchedules || data.newSchedules || false,
+        hasNewSongs: !!(data?.hasNewSongs || data?.newSongs),
+        hasNewSchedules: !!(data?.hasNewSchedules || data?.newSchedules),
       }
     }
   } catch (error) {

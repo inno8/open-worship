@@ -105,6 +105,22 @@ declare global {
         }>
         setSourceName: (name: string) => Promise<{ success: boolean }>
       }
+
+      // API Proxy (CORS bypass)
+      apiFetch: (options: {
+        url: string
+        method?: string
+        headers?: Record<string, string>
+        body?: string
+      }) => Promise<{
+        ok: boolean
+        status: number
+        statusText: string
+        data: unknown
+      }>
+
+      // Window
+      focusWindow: () => Promise<boolean>
     }
   }
 }

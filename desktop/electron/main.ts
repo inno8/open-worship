@@ -336,6 +336,55 @@ ipcMain.handle('ndi:setSourceName', (_event, name: string) => {
   return { success: true }
 })
 
+// ============ API PROXY (CORS bypass) ============
+
+ipcMain.handle('api:fetch', async (_event, options: { url: string; method?: string; headers?: Record<string, string>; body?: string }) => {
+  try {
+    const { url, method = 'GET', headers = {}, body } = options
+    
+    const response = await net.fetch(url, {
+      method,
+      headers,
+      body: body || undefined,
+    })
+
+    const responseText = await response.text()
+    
+    // Try to parse as JSON
+    let data: unknown
+    try {
+      data = JSON.parse(responseText)
+    } catch {
+      data = responseText
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      data,
+    }
+  } catch (error) {
+    return {
+      ok: false,
+      status: 0,
+      statusText: error instanceof Error ? error.message : 'Unknown error',
+      data: null,
+    }
+  }
+})
+
+// ============ WINDOW FOCUS ============
+
+ipcMain.handle('window:focus', () => {
+  if (mainWindow) {
+    if (mainWindow.isMinimized()) mainWindow.restore()
+    mainWindow.focus()
+    return true
+  }
+  return false
+})
+
 // ============ APP LIFECYCLE ============
 
 app.whenReady().then(() => {
