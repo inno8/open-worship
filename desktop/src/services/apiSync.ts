@@ -1,5 +1,5 @@
 import { useSyncStore } from '../stores/syncStore'
-import { Song } from '../stores/songStore'
+import { Song, autoFormatLyrics } from '../stores/songStore'
 import { Schedule } from '../stores/scheduleStore'
 
 // API response types (can be adjusted based on actual API)
@@ -244,21 +244,99 @@ export function apiSongToLocal(apiSong: ApiSong): Song {
   // Handle various field name variants
   const title = apiSong.title || apiSong.name || 'Untitled'
   const author = apiSong.author || apiSong.artist || ''
-  const lyrics = apiSong.lyrics || apiSong.text || apiSong.content || apiSong.body || ''
+  
+  // Get raw lyrics/content from various possible fields
+  let rawLyrics = apiSong.lyrics || apiSong.text || apiSong.content || apiSong.body || ''
+  
+  // Format lyrics into sections with max 3 lines per verse
+  const formattedLyrics = formatLyricsFromContent(rawLyrics)
+  
   const createdAt = apiSong.createdAt || apiSong.created_at || now
   const updatedAt = apiSong.updatedAt || apiSong.updated_at || now
   
-  console.log('[apiSync] Converting song:', { id: apiSong.id, title, author, lyricsLength: lyrics.length })
+  console.log('[apiSync] Converting song:', { id: apiSong.id, title, author, rawLength: rawLyrics.length, formattedLength: formattedLyrics.length })
   
   return {
     id: apiSong.id,
     title,
     author,
-    lyrics,
+    lyrics: formattedLyrics,
     tags: apiSong.tags || [],
     createdAt,
     updatedAt,
   }
+}
+
+// Format raw content/lyrics into structured sections with max 3 lines per verse
+function formatLyricsFromContent(content: string): string {
+  if (!content || !content.trim()) return ''
+  
+  // Split by common section markers or double newlines
+  const lines = content.split(/\r?\n/)
+  const result: string[] = []
+  let currentSection: string[] = []
+  let verseNum = 1
+  let hasSection = false
+  
+  for (const line of lines) {
+    const trimmed = line.trim()
+    
+    // Check if this is a section marker like [Verse 1], [Chorus], etc.
+    if (trimmed.match(/^\[.+\]$/)) {
+      // Save current section if any
+      if (currentSection.length > 0) {
+        result.push(...formatSection(currentSection, hasSection ? null : `Verse ${verseNum++}`))
+        currentSection = []
+      }
+      result.push(trimmed)
+      hasSection = true
+    } else if (trimmed === '') {
+      // Empty line - might indicate section break
+      if (currentSection.length > 0) {
+        result.push(...formatSection(currentSection, hasSection ? null : `Verse ${verseNum++}`))
+        currentSection = []
+        hasSection = false
+      }
+      result.push('')
+    } else {
+      currentSection.push(trimmed)
+    }
+  }
+  
+  // Don't forget last section
+  if (currentSection.length > 0) {
+    result.push(...formatSection(currentSection, hasSection ? null : `Verse ${verseNum}`))
+  }
+  
+  return result.join('\n').replace(/\n{3,}/g, '\n\n').trim()
+}
+
+// Format a section into chunks of max 3 lines
+function formatSection(lines: string[], defaultHeader: string | null): string[] {
+  const MAX_LINES = 3
+  const result: string[] = []
+  
+  // Add default header if no section marker was present
+  if (defaultHeader && lines.length > 0) {
+    result.push(`[${defaultHeader}]`)
+  }
+  
+  // Split lines into chunks of 3
+  for (let i = 0; i < lines.length; i += MAX_LINES) {
+    const chunk = lines.slice(i, i + MAX_LINES)
+    
+    // If this is a continuation (not first chunk) and we had a header, add continuation marker
+    if (i > 0 && defaultHeader) {
+      result.push('')
+      result.push(`[${defaultHeader} cont.]`)
+    } else if (i > 0) {
+      result.push('')
+    }
+    
+    result.push(...chunk)
+  }
+  
+  return result
 }
 
 // Convert API schedule to local Schedule format
