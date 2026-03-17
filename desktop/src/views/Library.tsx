@@ -760,51 +760,63 @@ export default function Library() {
           </div>
         </div>
 
-        <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
           {filteredSongs.map((song) => (
-            <button
+            <div
               key={song.id}
               onClick={() => selectSong(song)}
               style={{
-                width: '100%',
-                textAlign: 'left',
-                padding: '20px',
+                backgroundColor: selectedSong?.id === song.id ? '#1a1a2e' : '#16213e',
                 borderRadius: '14px',
-                border: 'none',
-                borderLeft: selectedSong?.id === song.id ? '4px solid #e94560' : '4px solid transparent',
-                backgroundColor: selectedSong?.id === song.id ? '#1a1a2e' : 'transparent',
+                padding: '20px',
+                border: selectedSong?.id === song.id ? '2px solid #e94560' : '1px solid rgba(255,255,255,0.05)',
                 cursor: 'pointer',
                 transition: 'all 0.2s',
               }}
               onMouseEnter={(e) => {
                 if (selectedSong?.id !== song.id) {
-                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.03)'
+                  e.currentTarget.style.backgroundColor = '#1a1a2e'
+                  e.currentTarget.style.border = '1px solid rgba(255,255,255,0.1)'
                 }
               }}
               onMouseLeave={(e) => {
                 if (selectedSong?.id !== song.id) {
-                  e.currentTarget.style.backgroundColor = 'transparent'
+                  e.currentTarget.style.backgroundColor = '#16213e'
+                  e.currentTarget.style.border = '1px solid rgba(255,255,255,0.05)'
                 }
               }}
             >
-              <div style={{ fontWeight: 600, color: '#ffffff', fontSize: '15px', marginBottom: '6px' }}>
+              <div style={{ 
+                color: '#ffffff', 
+                fontSize: '15px', 
+                fontWeight: 600,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                marginBottom: '4px',
+              }}>
                 {song.title}
               </div>
-              <div style={{ fontSize: '14px', color: '#a0aec0', marginBottom: '12px' }}>
+              <div style={{ 
+                fontSize: '13px', 
+                color: '#a0aec0',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+              }}>
                 {song.author}
               </div>
               {song.tags.length > 0 && (
-                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-                  {song.tags.map((tag) => (
+                <div style={{ display: 'flex', gap: '6px', marginTop: '12px', flexWrap: 'wrap' }}>
+                  {song.tags.slice(0, 2).map((tag) => (
                     <span
                       key={tag}
                       style={{ 
                         fontSize: '11px', 
-                        padding: '6px 12px', 
-                        borderRadius: '20px', 
-                        fontWeight: 500,
-                        backgroundColor: 'rgba(233,69,96,0.15)', 
-                        color: '#e94560' 
+                        padding: '4px 10px', 
+                        borderRadius: '12px', 
+                        backgroundColor: '#0f3460', 
+                        color: '#a0aec0' 
                       }}
                     >
                       {tag}
@@ -812,7 +824,7 @@ export default function Library() {
                   ))}
                 </div>
               )}
-            </button>
+            </div>
           ))}
         </div>
 
