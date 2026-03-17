@@ -72,6 +72,7 @@ export default function Library() {
     deleteSong,
     selectSong,
     setSearchQuery,
+    reloadSongs,
   } = useSongStore()
 
   const { activeSchedule, addItem } = useScheduleStore()
@@ -169,8 +170,11 @@ export default function Library() {
       let skippedCount = 0
 
       for (const apiSong of apiSongs) {
+        // Get fresh state each iteration to avoid stale closure
+        const currentSongs = useSongStore.getState().songs
+        
         // Check if song already exists (by ID or title+author combo)
-        const exists = songs.some(
+        const exists = currentSongs.some(
           s => s.id === apiSong.id || 
                (s.title.toLowerCase() === apiSong.title.toLowerCase() && 
                 s.author.toLowerCase() === (apiSong.author || '').toLowerCase())
@@ -185,6 +189,9 @@ export default function Library() {
         }
       }
 
+      // Reload songs from DB to ensure UI is in sync
+      await reloadSongs()
+      
       if (addedCount > 0) {
         showToast(`Added ${addedCount} new song${addedCount > 1 ? 's' : ''}`)
       } else if (skippedCount > 0) {

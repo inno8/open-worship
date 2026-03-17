@@ -5,6 +5,7 @@ import { useSongStore, parseLyrics, Section, Song } from '../stores/songStore'
 import { useNdiOutput } from '../ndi/useNdiOutput'
 import { useSyncStore } from '../stores/syncStore'
 import { fetchSchedulesFromApi, apiScheduleToLocal, ApiSchedule } from '../services/apiSync'
+import { getApiSchedules, setApiSchedules as setCachedApiSchedules } from './SplashScreen'
 
 export default function Presenter() {
   useNdiOutput()
@@ -26,7 +27,7 @@ export default function Presenter() {
   } = usePresentationStore()
 
   const { activeSchedule, addItem, setSchedules, setActiveSchedule, schedules } = useScheduleStore()
-  const { songs, addSong } = useSongStore()
+  const { songs, addSong, reloadSongs } = useSongStore()
   const { apiToken, apiBaseUrl } = useSyncStore()
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'songs'>('schedule')
@@ -41,11 +42,17 @@ export default function Presenter() {
   const [isSyncingSchedules, setIsSyncingSchedules] = useState(false)
   
   // API schedules state for schedule list view
-  const [apiSchedules, setApiSchedules] = useState<Schedule[]>([])
+  // Initialize with cached schedules from SplashScreen sync
+  const [apiSchedules, setApiSchedules] = useState<Schedule[]>(() => getApiSchedules())
   const [selectedApiSchedule, setSelectedApiSchedule] = useState<Schedule | null>(null)
   const [viewMode, setViewMode] = useState<'list' | 'detail'>('list')
 
   useEffect(() => { loadBackgrounds() }, [])
+  
+  // Sync apiSchedules with cache when they change
+  useEffect(() => {
+    setCachedApiSchedules(apiSchedules)
+  }, [apiSchedules])
 
   const showToast = useCallback((message: string) => {
     setToast(message)
@@ -81,8 +88,11 @@ export default function Presenter() {
       for (const schedule of currentAndFuture) {
         for (const item of schedule.items || []) {
           if (item.type === 'song' && item.song) {
+            // Get fresh state each iteration to avoid stale closure
+            const currentSongs = useSongStore.getState().songs
+            
             // Check if song already exists in local DB
-            const exists = songs.some(
+            const exists = currentSongs.some(
               s => s.id === item.song!.id || 
                    (s.title.toLowerCase() === item.song!.title.toLowerCase() && 
                     s.author.toLowerCase() === (item.song!.author || '').toLowerCase())
@@ -94,6 +104,11 @@ export default function Presenter() {
             }
           }
         }
+      }
+      
+      // Reload songs from DB to ensure UI is in sync
+      if (songsAdded > 0) {
+        await reloadSongs()
       }
       
       setApiSchedules(currentAndFuture)

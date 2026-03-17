@@ -26,6 +26,7 @@ interface SongState {
   
   // Actions
   loadSongs: () => Promise<void>
+  reloadSongs: () => Promise<void>
   setSongs: (songs: Song[]) => void
   addSong: (song: Song) => Promise<void>
   updateSong: (id: string, updates: Partial<Song>) => Promise<void>
@@ -60,6 +61,24 @@ export const useSongStore = create<SongState>((set, get) => ({
     } catch (error) {
       console.error('Failed to load songs:', error)
       set({ error: 'Failed to load songs', isLoading: false, isInitialized: true })
+    }
+  },
+
+  // Force reload songs from DB (call after bulk sync)
+  reloadSongs: async () => {
+    set({ isLoading: true, error: null })
+    
+    try {
+      if (window.electronAPI?.songs) {
+        const songs = await window.electronAPI.songs.getAll()
+        set({ songs, isLoading: false })
+        console.log('[songStore] Reloaded', songs.length, 'songs from DB')
+      } else {
+        set({ isLoading: false })
+      }
+    } catch (error) {
+      console.error('Failed to reload songs:', error)
+      set({ error: 'Failed to reload songs', isLoading: false })
     }
   },
 

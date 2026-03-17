@@ -6,11 +6,18 @@ import { Schedule } from '../stores/scheduleStore'
 export interface ApiSong {
   id: string
   title: string
+  name?: string // Some APIs use name instead of title
   author: string
+  artist?: string // Some APIs use artist instead of author
   lyrics: string
+  text?: string // Some APIs use text instead of lyrics
+  content?: string // Some APIs use content instead of lyrics
+  body?: string // Some APIs use body instead of lyrics
   tags?: string[]
   createdAt?: string
   updatedAt?: string
+  created_at?: string
+  updated_at?: string
 }
 
 export interface ApiScheduleItem {
@@ -130,8 +137,21 @@ export async function fetchSongsFromApi(): Promise<SyncResult<ApiSong[]>> {
     }
 
     const data = response.data as Record<string, unknown>
-    // Handle both array response and { songs: [...] } response
-    const songs: ApiSong[] = Array.isArray(data) ? data : ((data?.songs || data?.data || []) as ApiSong[])
+    console.log('[apiSync] Songs API raw response:', data)
+    
+    // Handle various API response formats
+    let songs: ApiSong[] = []
+    if (Array.isArray(data)) {
+      songs = data
+    } else if (data?.songs && Array.isArray(data.songs)) {
+      songs = data.songs as ApiSong[]
+    } else if (data?.data && Array.isArray(data.data)) {
+      songs = data.data as ApiSong[]
+    } else if (data?.results && Array.isArray(data.results)) {
+      songs = data.results as ApiSong[]
+    }
+    
+    console.log('[apiSync] Parsed songs:', songs.length, songs)
     
     return { success: true, data: songs }
   } catch (error) {
@@ -161,8 +181,21 @@ export async function fetchSchedulesFromApi(): Promise<SyncResult<ApiSchedule[]>
     }
 
     const data = response.data as Record<string, unknown>
-    // Handle both array response and { schedules: [...] } response
-    const schedules: ApiSchedule[] = Array.isArray(data) ? data : ((data?.schedules || data?.data || []) as ApiSchedule[])
+    console.log('[apiSync] Schedules API raw response:', data)
+    
+    // Handle various API response formats
+    let schedules: ApiSchedule[] = []
+    if (Array.isArray(data)) {
+      schedules = data
+    } else if (data?.schedules && Array.isArray(data.schedules)) {
+      schedules = data.schedules as ApiSchedule[]
+    } else if (data?.data && Array.isArray(data.data)) {
+      schedules = data.data as ApiSchedule[]
+    } else if (data?.results && Array.isArray(data.results)) {
+      schedules = data.results as ApiSchedule[]
+    }
+    
+    console.log('[apiSync] Parsed schedules:', schedules.length, schedules)
     
     return { success: true, data: schedules }
   } catch (error) {
@@ -207,14 +240,24 @@ export async function checkHeartbeat(): Promise<SyncResult<{ hasNewSongs: boolea
 // Convert API song to local Song format
 export function apiSongToLocal(apiSong: ApiSong): Song {
   const now = new Date().toISOString()
+  
+  // Handle various field name variants
+  const title = apiSong.title || apiSong.name || 'Untitled'
+  const author = apiSong.author || apiSong.artist || ''
+  const lyrics = apiSong.lyrics || apiSong.text || apiSong.content || apiSong.body || ''
+  const createdAt = apiSong.createdAt || apiSong.created_at || now
+  const updatedAt = apiSong.updatedAt || apiSong.updated_at || now
+  
+  console.log('[apiSync] Converting song:', { id: apiSong.id, title, author, lyricsLength: lyrics.length })
+  
   return {
     id: apiSong.id,
-    title: apiSong.title,
-    author: apiSong.author || '',
-    lyrics: apiSong.lyrics || '',
+    title,
+    author,
+    lyrics,
     tags: apiSong.tags || [],
-    createdAt: apiSong.createdAt || now,
-    updatedAt: apiSong.updatedAt || now,
+    createdAt,
+    updatedAt,
   }
 }
 

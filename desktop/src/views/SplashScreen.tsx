@@ -1,20 +1,28 @@
 import { useState, useEffect } from 'react'
 import { useSongStore } from '../stores/songStore'
-import { useScheduleStore } from '../stores/scheduleStore'
+import { useScheduleStore, Schedule } from '../stores/scheduleStore'
 import { usePresentationStore } from '../stores/presentationStore'
+import { useSyncStore } from '../stores/syncStore'
 import { registerSyncHandlers } from '../services/registerSyncHandlers'
 import { wsSync } from '../services/WebSocketSync'
 import { startHeartbeat, requestNotificationPermission } from '../services/heartbeatService'
+import { fetchSchedulesFromApi, apiScheduleToLocal } from '../services/apiSync'
 
 interface SplashScreenProps {
   onComplete: () => void
 }
+
+// Store for API schedules (shared with Presenter)
+let cachedApiSchedules: Schedule[] = []
+export function getApiSchedules() { return cachedApiSchedules }
+export function setApiSchedules(schedules: Schedule[]) { cachedApiSchedules = schedules }
 
 export default function SplashScreen({ onComplete }: SplashScreenProps) {
   const [status, setStatus] = useState('Starting…')
   const loadSongs = useSongStore((s) => s.loadSongs)
   const loadSchedules = useScheduleStore((s) => s.loadSchedules)
   const setNdiEnabled = usePresentationStore((s) => s.setNdiEnabled)
+  const { apiToken, apiBaseUrl } = useSyncStore.getState()
 
   useEffect(() => {
     let cancelled = false
@@ -45,6 +53,26 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
           fn: () => {
             requestNotificationPermission()
             startHeartbeat()
+          },
+        },
+        {
+          msg: 'Syncing schedules…',
+          fn: async () => {
+            // Only sync if API is configured
+            if (!apiToken || !apiBaseUrl) return
+            
+            try {
+              const result = await fetchSchedulesFromApi()
+              if (result.success && result.data) {
+                const fetchedSchedules = result.data.map(apiScheduleToLocal)
+                const today = new Date().toISOString().split('T')[0]
+                const currentAndFuture = fetchedSchedules.filter(s => !s.date || s.date >= today)
+                setApiSchedules(currentAndFuture)
+                console.log('[SplashScreen] Synced', currentAndFuture.length, 'schedules from API')
+              }
+            } catch (error) {
+              console.error('[SplashScreen] Schedule sync failed:', error)
+            }
           },
         },
       ]

@@ -159,9 +159,13 @@ ipcMain.handle('songs:getById', (_event, id: string) => {
   return null
 })
 
-ipcMain.handle('songs:create', (_event, song: { id: string; title: string; author: string; lyrics: string; tags: string[]; createdAt: string; updatedAt: string }) => {
-  const dbSong = { ...song, tags: JSON.stringify(song.tags) }
-  const created = db.createSong(dbSong)
+ipcMain.handle('songs:create', (_event, song: { id: string; title: string; author: string; lyrics: string; tags: string[]; defaultBackground?: string; createdAt: string; updatedAt: string }) => {
+  const dbSong = { 
+    ...song, 
+    tags: JSON.stringify(song.tags),
+    defaultBackground: song.defaultBackground || null,
+  }
+  const created = db.createSong(dbSong as db.Song)
   return { ...created, tags: song.tags }
 })
 
