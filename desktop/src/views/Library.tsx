@@ -69,6 +69,7 @@ export default function Library() {
     selectedSong,
     searchQuery,
     addSong,
+    updateSong,
     deleteSong,
     selectSong,
     setSearchQuery,
@@ -167,6 +168,7 @@ export default function Library() {
 
       const apiSongs = result.data || []
       let addedCount = 0
+      let updatedCount = 0
       let skippedCount = 0
 
       for (const apiSong of apiSongs) {
@@ -174,16 +176,25 @@ export default function Library() {
         const currentSongs = useSongStore.getState().songs
         
         // Check if song already exists (by ID or title+author combo)
-        const exists = currentSongs.some(
+        const existingSong = currentSongs.find(
           s => s.id === apiSong.id || 
-               (s.title.toLowerCase() === apiSong.title.toLowerCase() && 
-                s.author.toLowerCase() === (apiSong.author || '').toLowerCase())
+               (s.title.toLowerCase() === (apiSong.title || apiSong.name || '').toLowerCase() && 
+                s.author.toLowerCase() === (apiSong.author || apiSong.artist || '').toLowerCase())
         )
 
-        if (!exists) {
-          const localSong = apiSongToLocal(apiSong)
+        const localSong = apiSongToLocal(apiSong)
+
+        if (!existingSong) {
+          // New song - add it
           await addSong(localSong)
           addedCount++
+        } else if (!existingSong.lyrics || existingSong.lyrics.trim() === '') {
+          // Existing song with empty lyrics - update it
+          await updateSong(existingSong.id, { 
+            lyrics: localSong.lyrics,
+            updatedAt: new Date().toISOString()
+          })
+          updatedCount++
         } else {
           skippedCount++
         }
@@ -192,8 +203,13 @@ export default function Library() {
       // Reload songs from DB to ensure UI is in sync
       await reloadSongs()
       
-      if (addedCount > 0) {
-        showToast(`Added ${addedCount} new song${addedCount > 1 ? 's' : ''}`)
+      // Build toast message
+      const parts: string[] = []
+      if (addedCount > 0) parts.push(`${addedCount} added`)
+      if (updatedCount > 0) parts.push(`${updatedCount} updated`)
+      
+      if (parts.length > 0) {
+        showToast(`Songs: ${parts.join(', ')}`)
       } else if (skippedCount > 0) {
         showToast('All songs already in library')
       } else {
