@@ -1,1 +1,60 @@
-"use strict";const n=require("electron");n.contextBridge.exposeInMainWorld("electronAPI",{getDisplays:()=>n.ipcRenderer.invoke("get-displays"),openPresentation:e=>n.ipcRenderer.invoke("open-presentation",e),closePresentation:()=>n.ipcRenderer.invoke("close-presentation"),updatePresentation:e=>n.ipcRenderer.invoke("update-presentation",e),isPresentationOpen:()=>n.ipcRenderer.invoke("is-presentation-open"),onSlideUpdate:e=>{n.ipcRenderer.on("slide-update",(r,i)=>e(i))},removeSlideUpdateListener:()=>{n.ipcRenderer.removeAllListeners("slide-update")},songs:{getAll:()=>n.ipcRenderer.invoke("songs:getAll"),getById:e=>n.ipcRenderer.invoke("songs:getById",e),create:e=>n.ipcRenderer.invoke("songs:create",e),update:(e,r)=>n.ipcRenderer.invoke("songs:update",e,r),delete:e=>n.ipcRenderer.invoke("songs:delete",e)},schedules:{getAll:()=>n.ipcRenderer.invoke("schedules:getAll"),getById:e=>n.ipcRenderer.invoke("schedules:getById",e),create:e=>n.ipcRenderer.invoke("schedules:create",e),update:(e,r)=>n.ipcRenderer.invoke("schedules:update",e,r),delete:e=>n.ipcRenderer.invoke("schedules:delete",e)},scheduleItems:{add:e=>n.ipcRenderer.invoke("scheduleItems:add",e),update:(e,r)=>n.ipcRenderer.invoke("scheduleItems:update",e,r),delete:e=>n.ipcRenderer.invoke("scheduleItems:delete",e),reorder:(e,r)=>n.ipcRenderer.invoke("scheduleItems:reorder",e,r)},backgrounds:{list:()=>n.ipcRenderer.invoke("backgrounds:list"),import:()=>n.ipcRenderer.invoke("backgrounds:import"),remove:e=>n.ipcRenderer.invoke("backgrounds:remove",e)},ndi:{getStatus:()=>n.ipcRenderer.invoke("ndi:getStatus"),start:e=>n.ipcRenderer.invoke("ndi:start",e),stop:()=>n.ipcRenderer.invoke("ndi:stop"),sendFrame:e=>n.ipcRenderer.invoke("ndi:sendFrame",e),setSourceName:e=>n.ipcRenderer.invoke("ndi:setSourceName",e)},apiFetch:e=>n.ipcRenderer.invoke("api:fetch",e),focusWindow:()=>n.ipcRenderer.invoke("window:focus")});
+"use strict";
+const electron = require("electron");
+electron.contextBridge.exposeInMainWorld("electronAPI", {
+  // Display management
+  getDisplays: () => electron.ipcRenderer.invoke("get-displays"),
+  // Presentation window
+  openPresentation: (displayId) => electron.ipcRenderer.invoke("open-presentation", displayId),
+  closePresentation: () => electron.ipcRenderer.invoke("close-presentation"),
+  updatePresentation: (slideData) => electron.ipcRenderer.invoke("update-presentation", slideData),
+  isPresentationOpen: () => electron.ipcRenderer.invoke("is-presentation-open"),
+  // Listen for slide updates (in presentation window)
+  onSlideUpdate: (callback) => {
+    electron.ipcRenderer.on("slide-update", (_event, data) => callback(data));
+  },
+  // Remove listener
+  removeSlideUpdateListener: () => {
+    electron.ipcRenderer.removeAllListeners("slide-update");
+  },
+  // ============ SONGS ============
+  songs: {
+    getAll: () => electron.ipcRenderer.invoke("songs:getAll"),
+    getById: (id) => electron.ipcRenderer.invoke("songs:getById", id),
+    create: (song) => electron.ipcRenderer.invoke("songs:create", song),
+    update: (id, updates) => electron.ipcRenderer.invoke("songs:update", id, updates),
+    delete: (id) => electron.ipcRenderer.invoke("songs:delete", id)
+  },
+  // ============ SCHEDULES ============
+  schedules: {
+    getAll: () => electron.ipcRenderer.invoke("schedules:getAll"),
+    getById: (id) => electron.ipcRenderer.invoke("schedules:getById", id),
+    create: (schedule) => electron.ipcRenderer.invoke("schedules:create", schedule),
+    update: (id, updates) => electron.ipcRenderer.invoke("schedules:update", id, updates),
+    delete: (id) => electron.ipcRenderer.invoke("schedules:delete", id)
+  },
+  // ============ SCHEDULE ITEMS ============
+  scheduleItems: {
+    add: (item) => electron.ipcRenderer.invoke("scheduleItems:add", item),
+    update: (id, updates) => electron.ipcRenderer.invoke("scheduleItems:update", id, updates),
+    delete: (id) => electron.ipcRenderer.invoke("scheduleItems:delete", id),
+    reorder: (scheduleId, itemIds) => electron.ipcRenderer.invoke("scheduleItems:reorder", scheduleId, itemIds)
+  },
+  // ============ BACKGROUNDS ============
+  backgrounds: {
+    list: () => electron.ipcRenderer.invoke("backgrounds:list"),
+    import: () => electron.ipcRenderer.invoke("backgrounds:import"),
+    remove: (filename) => electron.ipcRenderer.invoke("backgrounds:remove", filename)
+  },
+  // ============ NDI ============
+  ndi: {
+    getStatus: () => electron.ipcRenderer.invoke("ndi:getStatus"),
+    start: (sourceName) => electron.ipcRenderer.invoke("ndi:start", sourceName),
+    stop: () => electron.ipcRenderer.invoke("ndi:stop"),
+    sendFrame: (frameData) => electron.ipcRenderer.invoke("ndi:sendFrame", frameData),
+    setSourceName: (name) => electron.ipcRenderer.invoke("ndi:setSourceName", name)
+  },
+  // ============ API PROXY (CORS bypass) ============
+  apiFetch: (options) => electron.ipcRenderer.invoke("api:fetch", options),
+  // ============ WINDOW ============
+  focusWindow: () => electron.ipcRenderer.invoke("window:focus")
+});
