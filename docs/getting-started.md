@@ -1,116 +1,149 @@
+---
+layout: default
+title: Getting Started - Open Worship
+---
+
 # Getting Started
 
-This page covers system requirements, how to install Open Worship, what to do on first launch, and a quick tour of the interface.
+This guide will help you install Open Worship and get it running for your first service.
 
 ---
 
-## System requirements
+## System Requirements
 
-- **OS:** Windows 10/11, macOS, or Linux (desktop app runs on Electron).
-- **RAM:** 4 GB minimum; 8 GB recommended for NDI and multiple displays.
-- **Display:** One screen for the operator; a second display or NDI for the audience output is optional.
-- **NDI (optional):** For sending lyrics to OBS or other NDI tools, you need [NDI Runtime](https://ndi.video/tools/) installed. See [NDI & OBS Setup](ndi-obs-setup.md).
+| Requirement | Minimum |
+|-------------|---------|
+| **OS** | Windows 10/11, macOS 10.15+, Linux |
+| **RAM** | 4 GB |
+| **Storage** | 200 MB |
+| **Display** | 1280x720 or higher |
+
+For **NDI output** (livestreaming), you'll also need:
+- NDI Runtime installed (free from [ndi.tv](https://ndi.tv/tools/))
+- Gigabit network recommended for best quality
 
 ---
 
 ## Installation
 
-Open Worship has two parts: a **backend** (optional, for sync/API) and the **desktop** app (what you use to run lyrics).
+### Windows
 
-### Desktop app (required)
+1. Download **Open Worship Setup.exe** from the [Releases page](https://github.com/inno8/open-worship/releases)
+2. Run the installer
+3. Follow the prompts
+4. Launch Open Worship from the Start menu or desktop shortcut
 
-1. **Clone the repository** (or download the source):
-   ```bash
-   git clone https://github.com/inno8/open-worship.git
-   cd open-worship
-   ```
+### macOS
 
-2. **Run the backend** (in one terminal):
-   ```bash
-   cd backend
-   python -m venv venv
-   venv\Scripts\activate   # Windows
-   # source venv/bin/activate  # Mac/Linux
-   pip install -r requirements.txt
-   python manage.py migrate
-   python manage.py runserver
-   ```
+Coming soon. For now, you can [build from source](#running-from-source).
 
-3. **Run the desktop app** (in a second terminal):
-   ```bash
-   cd desktop
-   npm install
-   npm run dev
-   ```
+### Linux
 
-The app window opens when `npm run dev` is running. On first run, the backend is optional; the app can store songs and schedules locally without it.
-
-### Pre-built installers (if available)
-
-If your church provides a pre-built installer (e.g. Windows `.exe` or macOS `.dmg`), run it and follow the prompts. No need to run backend or `npm` in that case.
+Coming soon. For now, you can [build from source](#running-from-source).
 
 ---
 
-## First launch
+## First Launch
 
-1. The app opens to the **Presenter** view by default (you can change this later via the sidebar).
-2. If you have no songs yet, go to **Library** and add or import songs (see [Adding Songs](adding-songs.md)).
-3. In **Schedule**, create or open a schedule and add songs to it (see [Building Schedules](building-schedules.md)).
-4. In **Presenter**, select your schedule, pick a slide, and press **GO LIVE** when you’re ready to show lyrics (see [Running a Service](running-a-service.md)).
+When you first open Open Worship, you'll see the main interface:
 
-Optional: open **Settings** to set your **Presentation Output** display, enable **NDI**, and adjust fonts and backgrounds.
+### The Interface
 
----
+Open Worship has four main areas accessible from the sidebar:
 
-## Overview of the interface
-
-The main window has a **sidebar** on the left and a **main area** that changes by section.
-
-### Sidebar
-
-- **Library** — Open your song library (add, edit, search, import).
-- **Schedule** — Build and edit service schedules (songs, custom text, blank slides).
-- **Presenter** — Run the service (schedule + verses, preview, live output, GO LIVE).
-- **Settings** — Display, NDI, appearance, backgrounds, data backup, and shortcuts.
-
-Click any item to switch views.
-
-### Library
-
-- **Left:** Search and list of all songs.
-- **Right:** Details of the selected song (title, author, tags, lyrics by section). Buttons to **Edit**, **Delete**, and **Add to Schedule**.
-- **Add Song** at the bottom (or **Import from File** in the empty state) to add or import songs.
-
-### Schedule
-
-- **Left:** Name and date of the active schedule, plus the ordered list of items (songs, custom text, blank slides). Buttons to reorder (up/down), remove, and edit custom text.
-- **Right:** “Add Songs” — search and grid of songs; click **+** on a song to add it to the schedule. Buttons to add a **blank slide** or **custom text** item.
-
-### Presenter
-
-- **Left:** Tabs for **Schedule** and **Songs**. Under Schedule: list of schedule items. Under Songs: search and full song list (for ad‑hoc use).
-- **Center:** Verses/slides for the selected item or song; click a verse to preview and double‑click to push to live.
-- **Right:** **Preview** (what will go out) and **Live** (what’s currently on the output). Buttons: **Black** (blackout), **GO LIVE** / **STOP**, and **→ LIVE** (push current preview to output).
-
-When NDI is enabled and running, a small **NDI** indicator appears in the header.
-
-### Settings
-
-Sections for:
-
-- **Backend Sync** — WebSocket URL for optional backend connection.
-- **Display** — Which monitor to use for presentation output (or “Auto (Primary)”).
-- **NDI Output** — Enable NDI and set the NDI source name (e.g. “Open Worship”).
-- **Appearance** — Font family, size, weight, text color, and a preview.
-- **Backgrounds** — Default background (colors and images); add or remove images.
-- **Keyboard Shortcuts** — Reference list of shortcuts.
-- **Data Management** — Export backup, clear data.
-- **About** — App version and link to the project.
+| Tab | Purpose |
+|-----|---------|
+| **Library** | Your song database. Add, edit, search, and organize songs. |
+| **Schedule** | Build service setlists. Add songs, reorder, and save for future use. |
+| **Presenter** | Run the service. Show slides, navigate with keyboard, control live output. |
+| **Settings** | Configure displays, fonts, colors, backgrounds, NDI output, and more. |
 
 ---
 
-## Next steps
+## Adding Your First Song
 
-- [Adding Songs](adding-songs.md) — Build your library and import from files.
-- [Building Schedules](building-schedules.md) — Create setlists for each service.
-- [Running a Service](running-a-service.md) — Use Presenter and GO LIVE in the room or over NDI.
+1. Click **Library** in the sidebar
+2. Click the **+ Add Song** button
+3. Enter the song title (e.g., "Amazing Grace")
+4. Paste or type the lyrics
+
+### Organizing Lyrics with Sections
+
+Use section markers to divide your song:
+
+```
+[Verse 1]
+Amazing grace, how sweet the sound
+That saved a wretch like me
+I once was lost, but now I'm found
+Was blind but now I see
+
+[Verse 2]
+'Twas grace that taught my heart to fear
+And grace my fears relieved
+How precious did that grace appear
+The hour I first believed
+
+[Chorus]
+My chains are gone, I've been set free
+My God, my Savior has ransomed me
+And like a flood His mercy reigns
+Unending love, amazing grace
+```
+
+Supported section types: `[Verse]`, `[Chorus]`, `[Bridge]`, `[Pre-Chorus]`, `[Outro]`, `[Intro]`, `[Tag]`
+
+---
+
+## Creating Your First Schedule
+
+1. Click **Schedule** in the sidebar
+2. Click **+ New Schedule**
+3. Give it a name (e.g., "Sunday Service - March 19")
+4. Click **Add Song** to add songs from your library
+5. Drag and drop to reorder
+6. Click **Save**
+
+---
+
+## Presenting
+
+1. Click **Presenter** in the sidebar
+2. Select your schedule (or browse songs directly)
+3. Click on a song to load it
+4. Click **GO LIVE** to start outputting to your display
+5. Use these controls:
+
+| Key | Action |
+|-----|--------|
+| **Space** or **→** | Next slide |
+| **←** | Previous slide |
+| **↑** / **↓** | Previous / Next slide |
+| **B** | Black screen (toggle) |
+| **Esc** | Stop live presentation |
+
+---
+
+## Setting Up Your Display
+
+1. Go to **Settings** in the sidebar
+2. Under **Display**, select your projector or second monitor
+3. The lyrics will output to that screen when you click **GO LIVE**
+
+**Tip:** If you only have one screen, Open Worship will show a preview. For actual services, connect a projector or second monitor.
+
+---
+
+## Next Steps
+
+- [Adding Songs](adding-songs) — Import songs, use tags, edit lyrics
+- [Building Schedules](building-schedules) — Advanced schedule features
+- [NDI & OBS Setup](ndi-obs-setup) — Overlay lyrics on your livestream
+- [Keyboard Shortcuts](keyboard-shortcuts) — Master the hotkeys
+
+---
+
+## Need Help?
+
+- Check the [FAQ](faq) for common issues
+- Report bugs on [GitHub Issues](https://github.com/inno8/open-worship/issues)

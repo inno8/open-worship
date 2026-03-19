@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { usePresentationStore, getBackgroundStyle } from '../stores/presentationStore'
+import { usePresentationStore, getBackgroundStyle, TextPosition } from '../stores/presentationStore'
 import { useSongStore } from '../stores/songStore'
 import { useScheduleStore } from '../stores/scheduleStore'
 import { useSyncStore } from '../stores/syncStore'
@@ -47,7 +47,17 @@ export default function Settings() {
     ndiRunning,
     ndiAvailable,
     ndiMockMode,
+    textPosition,
+    shadowBlur,
+    shadowOffsetX,
+    shadowOffsetY,
+    shadowColor,
     setDisplayId,
+    setTextPosition,
+    setShadowBlur,
+    setShadowOffsetX,
+    setShadowOffsetY,
+    setShadowColor,
     setFontSize,
     setFontFamily,
     setFontWeight,
@@ -546,6 +556,57 @@ export default function Settings() {
                 />
               </div>
 
+              <div>
+                <label style={labelStyle}>Text Position (for OBS overlay)</label>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => setTextPosition('center')}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      borderRadius: '12px',
+                      border: textPosition === 'center' 
+                        ? '2px solid #e94560' 
+                        : '1px solid rgba(255,255,255,0.1)',
+                      backgroundColor: textPosition === 'center' 
+                        ? 'rgba(233,69,96,0.15)' 
+                        : '#1a1a2e',
+                      color: textPosition === 'center' ? '#e94560' : '#a0aec0',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Center (Full Screen)
+                  </button>
+                  <button
+                    onClick={() => setTextPosition('lower-third')}
+                    style={{
+                      flex: 1,
+                      padding: '14px',
+                      borderRadius: '12px',
+                      border: textPosition === 'lower-third' 
+                        ? '2px solid #e94560' 
+                        : '1px solid rgba(255,255,255,0.1)',
+                      backgroundColor: textPosition === 'lower-third' 
+                        ? 'rgba(233,69,96,0.15)' 
+                        : '#1a1a2e',
+                      color: textPosition === 'lower-third' ? '#e94560' : '#a0aec0',
+                      fontSize: '13px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                  >
+                    Lower Third (OBS Overlay)
+                  </button>
+                </div>
+                <p style={{ fontSize: '12px', color: 'rgba(160,174,192,0.6)', marginTop: '8px', margin: '8px 0 0 0' }}>
+                  Lower Third positions lyrics at the bottom 1/3 of the screen for overlay use in OBS.
+                </p>
+              </div>
+
               <div style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -688,6 +749,67 @@ export default function Settings() {
                 </div>
               </div>
 
+              <div>
+                <label style={labelStyle}>Shadow Blur: {shadowBlur}</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={20}
+                  value={shadowBlur}
+                  onChange={(e) => setShadowBlur(Number(e.target.value))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Shadow Offset X: {shadowOffsetX}</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  value={shadowOffsetX}
+                  onChange={(e) => setShadowOffsetX(Number(e.target.value))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Shadow Offset Y: {shadowOffsetY}</label>
+                <input
+                  type="range"
+                  min={0}
+                  max={10}
+                  value={shadowOffsetY}
+                  onChange={(e) => setShadowOffsetY(Number(e.target.value))}
+                  style={{ width: '100%' }}
+                />
+              </div>
+
+              <div>
+                <label style={labelStyle}>Shadow Color</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <input
+                    type="color"
+                    value={shadowColor.startsWith('#') ? shadowColor : '#000000'}
+                    onChange={(e) => setShadowColor(e.target.value)}
+                    style={{
+                      width: '48px',
+                      height: '36px',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: '8px',
+                      cursor: 'pointer',
+                      backgroundColor: 'transparent',
+                    }}
+                  />
+                  <input
+                    type="text"
+                    value={shadowColor}
+                    onChange={(e) => setShadowColor(e.target.value)}
+                    style={{ ...inputStyle, flex: 1, fontFamily: 'monospace' }}
+                  />
+                </div>
+              </div>
+
               {/* Font preview */}
               <div style={{
                 padding: '32px',
@@ -701,7 +823,7 @@ export default function Settings() {
                 fontFamily,
                 fontWeight,
                 fontSize: `${fontSizeSliderVal / 3}px`,
-                textShadow: '2px 2px 4px rgba(0,0,0,0.8)',
+                textShadow: `${shadowOffsetX}px ${shadowOffsetY}px ${shadowBlur}px ${shadowColor}`,
               }}>
                 Preview Text
               </div>

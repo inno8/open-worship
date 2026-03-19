@@ -65,3 +65,43 @@ body {
     opacity: 0.4;
   }
 }
+
+/* Presentation window text scaling for OBS browser source */
+/* The presentation window needs to scale text to fit various viewport sizes */
+.presentation-text {
+  /* Fluid typography that scales with viewport */
+  font-size: clamp(1.5rem, 4vw, 4rem);
+  line-height: 1.4;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
+  max-width: 90%;
+  text-align: center;
+}
+
+/* Container query support for modern browsers */
+@supports (container-type: inline-size) {
+  .presentation-container {
+    container-type: inline-size;
+  }
+  
+  .presentation-text {
+    font-size: clamp(1rem, 5cqi, 4rem);
+  }
+}
+
+/* Ensure text doesn't overflow on small viewports (OBS 812px etc) */
+@media (max-width: 1000px) {
+  .presentation-text {
+    font-size: clamp(1rem, 5vw, 3rem);
+    line-height: 1.3;
+    padding: 0 1rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .presentation-text {
+    font-size: clamp(0.875rem, 6vw, 2rem);
+    line-height: 1.25;
+  }
+}

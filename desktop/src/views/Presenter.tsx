@@ -24,6 +24,10 @@ export default function Presenter() {
     ndiEnabled,
     ndiRunning,
     ndiMockMode,
+    shadowBlur,
+    shadowOffsetX,
+    shadowOffsetY,
+    shadowColor,
   } = usePresentationStore()
 
   const { activeSchedule, addItem, setSchedules, setActiveSchedule, schedules } = useScheduleStore()
@@ -410,7 +414,7 @@ export default function Presenter() {
 
       if (previewSlide) {
         const bgStyle = getBackgroundStyle(effectiveBg)
-        const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, ...bgStyle }
+        const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, ...bgStyle }
         setCurrentSlide(slideWithBg)
         if (window.electronAPI) {
           window.electronAPI.updatePresentation(slideWithBg)
@@ -420,19 +424,15 @@ export default function Presenter() {
   }
 
   function handleBlackout() {
-    const blankSlide = { text: '', sectionType: 'blank', backgroundColor: '#000000' }
     if (isLive) {
-      setCurrentSlide(blankSlide)
-      if (window.electronAPI) {
-        window.electronAPI.updatePresentation(blankSlide)
-      }
+      usePresentationStore.getState().showBlank()
     }
   }
 
   function handlePushToLive() {
     if (previewSlide) {
       const bgStyle = getBackgroundStyle(effectiveBg)
-      const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, ...bgStyle }
+      const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, ...bgStyle }
       setCurrentSlide(slideWithBg)
       if (window.electronAPI) {
         window.electronAPI.updatePresentation(slideWithBg)

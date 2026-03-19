@@ -5,6 +5,7 @@ import Schedule from './views/Schedule'
 import Presenter from './views/Presenter'
 import Settings from './views/Settings'
 import SplashScreen from './views/SplashScreen'
+import type { SlideData } from './stores/presentationStore'
 import { wsSync } from './services/WebSocketSync'
 import { startHeartbeat, stopHeartbeat, requestNotificationPermission } from './services/heartbeatService'
 import { useSyncStore } from './stores/syncStore'
@@ -94,12 +95,10 @@ function App() {
         return <Library />
       case 'schedule':
         return <Schedule />
-      case 'presenter':
-        return <Presenter />
       case 'settings':
         return <Settings />
       default:
-        return <Presenter />
+        return null
     }
   }
 
@@ -118,6 +117,10 @@ function App() {
         onViewChange={(v) => setCurrentView(v as View)}
       />
       <main style={{ flex: 1, overflow: 'hidden' }}>
+        {/* Keep Presenter always mounted so state persists across view switches */}
+        <div style={{ display: currentView === 'presenter' ? 'contents' : 'none' }}>
+          <Presenter />
+        </div>
         {renderView()}
       </main>
     </div>
@@ -125,16 +128,7 @@ function App() {
 }
 
 function PresentationWindow() {
-  const [slideData, setSlideData] = useState<{
-    text?: string
-    backgroundColor?: string
-    backgroundImage?: string
-    fontSize?: string
-    fontFamily?: string
-    fontWeight?: number
-    textColor?: string
-    sectionType?: string
-  } | null>(null)
+  const [slideData, setSlideData] = useState<SlideData | null>(null)
 
   // Listen for slide updates from main window
   useEffect(() => {
@@ -148,6 +142,36 @@ function PresentationWindow() {
       }
     }
   }, [])
+
+  // Calculate responsive font size based on viewport width
+  // Base: 4rem at 1920px viewport, scales down proportionally
+  // Using clamp for minimum readability and maximum size
+  const getResponsiveFontSize = (baseFontSize?: string): string => {
+    if (!baseFontSize) {
+      // Default: scale from 2rem (min) to 4rem (max) based on viewport
+      // At 812px OBS source: ~2.5rem, at 1920px: 4rem
+      return 'clamp(1.5rem, 4vw, 4rem)'
+    }
+    
+    // Parse the base font size
+    const match = baseFontSize.match(/([\d.]+)(rem|px|em)/)
+    if (!match) return baseFontSize
+    
+    const value = parseFloat(match[1])
+    const unit = match[2]
+    
+    // Convert to rem for scaling (assuming 16px base)
+    let remValue = value
+    if (unit === 'px') remValue = value / 16
+    if (unit === 'em') remValue = value // em ≈ rem for our purposes
+    
+    // Create a responsive clamp: min is 40% of base, max is 100% of base
+    // Scale based on viewport width (4vw ≈ 4rem at 1920px width)
+    const minRem = Math.max(1.5, remValue * 0.4)
+    const vwValue = (remValue / 4) * 4 // Proportional vw based on 4rem = 4vw at 1920px
+    
+    return `clamp(${minRem}rem, ${vwValue}vw, ${remValue}rem)`
+  }
 
   if (!slideData) {
     return (
@@ -174,24 +198,34 @@ function PresentationWindow() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '64px',
+        padding: 'clamp(16px, 4vw, 64px)',
         backgroundColor: slideData.backgroundColor || '#000000',
         backgroundImage: slideData.backgroundImage || undefined,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         position: 'relative',
+        boxSizing: 'border-box',
       }}
     >
-      <div style={{ textAlign: 'center' }}>
+      <div style={{ 
+        textAlign: 'center',
+        width: '100%',
+        maxWidth: '90%',
+        wordWrap: 'break-word',
+        overflowWrap: 'break-word',
+      }}>
         <p 
           style={{
             color: slideData.textColor || '#ffffff',
-            lineHeight: 1.5,
-            fontSize: slideData.fontSize || '4rem',
+            lineHeight: 1.4,
+            fontSize: getResponsiveFontSize(slideData.fontSize),
             fontFamily: slideData.fontFamily || 'inherit',
             fontWeight: slideData.fontWeight ?? 400,
-            textShadow: '2px 2px 8px rgba(0,0,0,0.8)',
+            textShadow: `${slideData.shadowOffsetX ?? 2}px ${slideData.shadowOffsetY ?? 2}px ${slideData.shadowBlur ?? 8}px ${slideData.shadowColor ?? 'rgba(0,0,0,0.8)'}`,
             margin: 0,
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            hyphens: 'auto',
           }}
         >
           {slideData.text}
@@ -202,9 +236,9 @@ function PresentationWindow() {
       {slideData.sectionType && slideData.sectionType !== 'blank' && (
         <div style={{
           position: 'absolute',
-          bottom: '32px',
-          right: '32px',
-          fontSize: '14px',
+          bottom: 'clamp(8px, 2vw, 32px)',
+          right: 'clamp(8px, 2vw, 32px)',
+          fontSize: 'clamp(8px, 1vw, 14px)',
           color: 'rgba(255,255,255,0.4)',
           fontWeight: 600,
           textTransform: 'uppercase',

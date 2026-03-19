@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { Section } from './songStore'
 
+export type TextPosition = 'center' | 'lower-third'
+
 export interface SlideData {
   text: string
   sectionType: string
@@ -11,6 +13,11 @@ export interface SlideData {
   fontFamily?: string
   fontWeight?: number
   textColor?: string
+  textPosition?: TextPosition
+  shadowBlur?: number
+  shadowOffsetX?: number
+  shadowOffsetY?: number
+  shadowColor?: string
 }
 
 // Convert a background value (color string or filename) to CSS properties
@@ -32,6 +39,8 @@ interface PresentationState {
   currentSectionIndex: number
   currentLineIndex: number
   displayId: number | null
+  isBlacked: boolean
+  slideBeforeBlack: SlideData | null
 
   // Settings
   fontSize: string
@@ -40,6 +49,11 @@ interface PresentationState {
   textColor: string
   defaultBackground: string
   backgrounds: string[]
+  textPosition: TextPosition
+  shadowBlur: number
+  shadowOffsetX: number
+  shadowOffsetY: number
+  shadowColor: string
 
   // NDI
   ndiEnabled: boolean
@@ -63,6 +77,11 @@ interface PresentationState {
   setFontWeight: (weight: number) => void
   setTextColor: (color: string) => void
   setDefaultBackground: (bg: string) => void
+  setTextPosition: (position: TextPosition) => void
+  setShadowBlur: (blur: number) => void
+  setShadowOffsetX: (offsetX: number) => void
+  setShadowOffsetY: (offsetY: number) => void
+  setShadowColor: (color: string) => void
   loadBackgrounds: () => Promise<void>
   addBackgrounds: () => Promise<string[]>
   removeBackground: (filename: string) => Promise<void>
@@ -80,12 +99,19 @@ export const usePresentationStore = create<PresentationState>()(
       currentSectionIndex: 0,
       currentLineIndex: 0,
       displayId: null,
+      isBlacked: false,
+      slideBeforeBlack: null,
       fontSize: '4rem',
       fontFamily: 'inherit',
       fontWeight: 400,
       textColor: '#ffffff',
       defaultBackground: '#000000',
       backgrounds: [],
+      textPosition: 'lower-third' as TextPosition,
+      shadowBlur: 8,
+      shadowOffsetX: 2,
+      shadowOffsetY: 2,
+      shadowColor: 'rgba(0,0,0,0.8)',
       ndiEnabled: true,
       ndiSourceName: 'Open Worship',
       ndiRunning: false,
@@ -103,7 +129,7 @@ export const usePresentationStore = create<PresentationState>()(
   setCurrentSlide: (currentSlide) => set({ currentSlide }),
   
   goToSection: (index) => {
-    const { sections, fontSize, fontFamily, fontWeight, textColor, defaultBackground } = get()
+    const { sections, fontSize, fontFamily, fontWeight, textColor, defaultBackground, textPosition, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor } = get()
     if (index >= 0 && index < sections.length) {
       const section = sections[index]
       const text = section.lines[0] || ''
@@ -112,6 +138,8 @@ export const usePresentationStore = create<PresentationState>()(
       set({
         currentSectionIndex: index,
         currentLineIndex: 0,
+        isBlacked: false,
+        slideBeforeBlack: null,
         currentSlide: {
           text,
           sectionType: section.type,
@@ -119,6 +147,11 @@ export const usePresentationStore = create<PresentationState>()(
           fontFamily,
           fontWeight,
           textColor,
+          textPosition,
+          shadowBlur,
+          shadowOffsetX,
+          shadowOffsetY,
+          shadowColor,
           ...bgStyle,
         },
       })
@@ -128,7 +161,7 @@ export const usePresentationStore = create<PresentationState>()(
   },
 
   goToLine: (sectionIndex, lineIndex) => {
-    const { sections, fontSize, fontFamily, fontWeight, textColor, defaultBackground } = get()
+    const { sections, fontSize, fontFamily, fontWeight, textColor, defaultBackground, textPosition, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor } = get()
     if (sectionIndex >= 0 && sectionIndex < sections.length) {
       const section = sections[sectionIndex]
       if (lineIndex >= 0 && lineIndex < section.lines.length) {
@@ -136,6 +169,8 @@ export const usePresentationStore = create<PresentationState>()(
         set({
           currentSectionIndex: sectionIndex,
           currentLineIndex: lineIndex,
+          isBlacked: false,
+          slideBeforeBlack: null,
           currentSlide: {
             text: section.lines[lineIndex],
             sectionType: section.type,
@@ -143,6 +178,11 @@ export const usePresentationStore = create<PresentationState>()(
             fontFamily,
             fontWeight,
             textColor,
+            textPosition,
+            shadowBlur,
+            shadowOffsetX,
+            shadowOffsetY,
+            shadowColor,
             ...bgStyle,
           },
         })
@@ -183,14 +223,28 @@ export const usePresentationStore = create<PresentationState>()(
   },
   
   showBlank: () => {
-    set({
-      currentSlide: {
-        text: '',
-        sectionType: 'blank',
-        backgroundColor: '#000000',
-      },
-    })
-    updatePresentationWindow(get().currentSlide)
+    const { isBlacked, slideBeforeBlack, currentSlide } = get()
+    if (isBlacked && slideBeforeBlack) {
+      // Restore previous slide
+      set({
+        isBlacked: false,
+        currentSlide: slideBeforeBlack,
+        slideBeforeBlack: null,
+      })
+      updatePresentationWindow(get().currentSlide)
+    } else {
+      // Go black, save current slide
+      set({
+        isBlacked: true,
+        slideBeforeBlack: currentSlide,
+        currentSlide: {
+          text: '',
+          sectionType: 'blank',
+          backgroundColor: '#000000',
+        },
+      })
+      updatePresentationWindow(get().currentSlide)
+    }
   },
   
       setDisplayId: (displayId) => set({ displayId }),
@@ -199,6 +253,11 @@ export const usePresentationStore = create<PresentationState>()(
       setFontWeight: (fontWeight) => set({ fontWeight }),
       setTextColor: (textColor) => set({ textColor }),
       setDefaultBackground: (defaultBackground) => set({ defaultBackground }),
+      setTextPosition: (textPosition) => set({ textPosition }),
+      setShadowBlur: (shadowBlur) => set({ shadowBlur }),
+      setShadowOffsetX: (shadowOffsetX) => set({ shadowOffsetX }),
+      setShadowOffsetY: (shadowOffsetY) => set({ shadowOffsetY }),
+      setShadowColor: (shadowColor) => set({ shadowColor }),
 
       loadBackgrounds: async () => {
         if (window.electronAPI?.backgrounds) {
@@ -283,6 +342,11 @@ export const usePresentationStore = create<PresentationState>()(
         displayId: state.displayId,
         ndiEnabled: state.ndiEnabled,
         ndiSourceName: state.ndiSourceName,
+        textPosition: state.textPosition,
+        shadowBlur: state.shadowBlur,
+        shadowOffsetX: state.shadowOffsetX,
+        shadowOffsetY: state.shadowOffsetY,
+        shadowColor: state.shadowColor,
       }),
     }
   )

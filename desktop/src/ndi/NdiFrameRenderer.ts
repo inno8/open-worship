@@ -1,8 +1,16 @@
-import { SlideData } from '../stores/presentationStore'
+import { SlideData, TextPosition } from '../stores/presentationStore'
 
-// Fixed 1920x1080 so OBS can scale the source without stretching text pixels
-export const NDI_FRAME_WIDTH = 1920
-export const NDI_FRAME_HEIGHT = 1080
+// Full screen mode: 1920x1080
+export const NDI_FRAME_WIDTH_FULL = 1920
+export const NDI_FRAME_HEIGHT_FULL = 1080
+
+// Lower third mode: 1920x360 (1/3 of 1080)
+export const NDI_FRAME_WIDTH_LOWER_THIRD = 1920
+export const NDI_FRAME_HEIGHT_LOWER_THIRD = 360
+
+// Default export for compatibility
+export const NDI_FRAME_WIDTH = NDI_FRAME_WIDTH_FULL
+export const NDI_FRAME_HEIGHT = NDI_FRAME_HEIGHT_FULL
 
 export interface RenderedFrame {
   data: Uint8Array
@@ -37,24 +45,57 @@ function extractBackgroundFilename(backgroundImage?: string): string | null {
 export class NdiFrameRenderer {
   private canvas: OffscreenCanvas
   private ctx: OffscreenCanvasRenderingContext2D
-  private readonly width = NDI_FRAME_WIDTH
-  private readonly height = NDI_FRAME_HEIGHT
+  private width: number
+  private height: number
   private lastSlideJson = ''
   private cachedFrame: RenderedFrame | null = null
   private didLogFrameDimensions = false
+  private currentMode: TextPosition = 'lower-third'
 
   constructor() {
-    this.canvas = new OffscreenCanvas(NDI_FRAME_WIDTH, NDI_FRAME_HEIGHT)
+    // Start with lower-third mode as default
+    this.width = NDI_FRAME_WIDTH_LOWER_THIRD
+    this.height = NDI_FRAME_HEIGHT_LOWER_THIRD
+    this.canvas = new OffscreenCanvas(this.width, this.height)
     this.ctx = this.canvas.getContext('2d', { willReadFrequently: true })!
-    // Verify OffscreenCanvas actual dimensions (debug NDI garbled output)
     console.log('[NdiFrameRenderer] OffscreenCanvas created:', {
-      requested: `${NDI_FRAME_WIDTH}x${NDI_FRAME_HEIGHT}`,
-      actualWidth: this.canvas.width,
-      actualHeight: this.canvas.height,
+      mode: this.currentMode,
+      width: this.width,
+      height: this.height,
+    })
+  }
+
+  // Update canvas size based on text position mode
+  private updateCanvasSize(textPosition: TextPosition): void {
+    if (textPosition === this.currentMode) return
+
+    this.currentMode = textPosition
+    if (textPosition === 'lower-third') {
+      this.width = NDI_FRAME_WIDTH_LOWER_THIRD
+      this.height = NDI_FRAME_HEIGHT_LOWER_THIRD
+    } else {
+      this.width = NDI_FRAME_WIDTH_FULL
+      this.height = NDI_FRAME_HEIGHT_FULL
+    }
+
+    // Recreate canvas with new dimensions
+    this.canvas = new OffscreenCanvas(this.width, this.height)
+    this.ctx = this.canvas.getContext('2d', { willReadFrequently: true })!
+    this.cachedFrame = null
+    this.lastSlideJson = ''
+
+    console.log('[NdiFrameRenderer] Canvas resized:', {
+      mode: textPosition,
+      width: this.width,
+      height: this.height,
     })
   }
 
   async renderSlide(slide: SlideData | null): Promise<RenderedFrame | null> {
+    // Update canvas size based on text position mode
+    const textPosition = slide?.textPosition ?? 'lower-third'
+    this.updateCanvasSize(textPosition)
+
     // Cache: if slide hasn't changed, return the same frame data
     const slideJson = slide ? JSON.stringify(slide) : ''
     if (slideJson === this.lastSlideJson && this.cachedFrame) {
@@ -97,19 +138,23 @@ export class NdiFrameRenderer {
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
 
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.8)'
-    ctx.shadowBlur = 8
-    ctx.shadowOffsetX = 2
-    ctx.shadowOffsetY = 2
+    ctx.shadowBlur = slide.shadowBlur ?? 8
+    ctx.shadowOffsetX = slide.shadowOffsetX ?? 2
+    ctx.shadowOffsetY = slide.shadowOffsetY ?? 2
+    ctx.shadowColor = slide.shadowColor ?? 'rgba(0,0,0,0.8)'
 
     const lines = slide.text.split('\n').filter(l => l.trim())
     const lineHeight = fontSize * 1.4
     const totalHeight = lines.length * lineHeight
+    
+    // In lower-third mode, the canvas IS the lower third (360px tall)
+    // So we just center the text vertically within that space
+    // In center mode, the canvas is 1080px and we center there
     const startY = (height - totalHeight) / 2 + lineHeight / 2
 
     for (let i = 0; i < lines.length; i++) {
       const y = startY + i * lineHeight
-      this.drawWrappedLine(lines[i], width / 2, y, width * 0.85, fontSize)
+      this.drawWrappedLine(lines[i], width / 2, y, width * 0.9, fontSize)
     }
 
     ctx.shadowColor = 'transparent'
@@ -153,14 +198,19 @@ export class NdiFrameRenderer {
     }
   }
 
-  // NDI frame is fixed 1920x1080; use 96px default and scale up so text stays readable when OBS scales the source
-  private static readonly NDI_FONT_SIZE_DEFAULT = 96
+  // Font size defaults - lower third needs smaller default since frame is 360px tall
+  private static readonly NDI_FONT_SIZE_DEFAULT_FULL = 96
+  private static readonly NDI_FONT_SIZE_DEFAULT_LOWER_THIRD = 64
   private static readonly NDI_FONT_SIZE_SCALE = 1.5
 
   private parseFontSize(fontSize?: string): number {
-    if (!fontSize) return NdiFrameRenderer.NDI_FONT_SIZE_DEFAULT
+    const defaultSize = this.currentMode === 'lower-third' 
+      ? NdiFrameRenderer.NDI_FONT_SIZE_DEFAULT_LOWER_THIRD 
+      : NdiFrameRenderer.NDI_FONT_SIZE_DEFAULT_FULL
+
+    if (!fontSize) return defaultSize
     const match = fontSize.match(/([\d.]+)(rem|px|em)/)
-    if (!match) return NdiFrameRenderer.NDI_FONT_SIZE_DEFAULT
+    if (!match) return defaultSize
     const value = parseFloat(match[1])
     const unit = match[2]
     let px: number
@@ -169,8 +219,14 @@ export class NdiFrameRenderer {
     } else {
       px = value
     }
-    const scaled = Math.round(px * NdiFrameRenderer.NDI_FONT_SIZE_SCALE)
-    return Math.max(scaled, NdiFrameRenderer.NDI_FONT_SIZE_DEFAULT)
+    
+    // Scale factor for lower-third mode (smaller frame = need proportionally smaller text)
+    const scale = this.currentMode === 'lower-third' 
+      ? NdiFrameRenderer.NDI_FONT_SIZE_SCALE * 0.7 
+      : NdiFrameRenderer.NDI_FONT_SIZE_SCALE
+    
+    const scaled = Math.round(px * scale)
+    return Math.max(scaled, defaultSize * 0.5) // Allow smaller minimum for lower third
   }
 
   private extractFrame(): RenderedFrame {

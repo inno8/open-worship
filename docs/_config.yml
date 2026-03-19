@@ -1,0 +1,35 @@
+title: Open Worship
+description: Free, open-source church presentation software for worship lyrics
+url: https://inno8.github.io
+baseurl: /open-worship
+logo: /assets/images/logo.png
+favicon: /assets/images/logo.png
+
+theme: jekyll-theme-cayman
+
+plugins:
+  - jekyll-relative-links
+
+relative_links:
+  enabled: true
+  collections: true
+
+# Default front matter
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
+
+# Navigation
+nav:
+  - title: Home
+    url: /
+  - title: Getting Started
+    url: /getting-started
+  - title: User Guide
+    url: /user-guide
+  - title: NDI & OBS
+    url: /ndi-obs-setup
+  - title: FAQ
+    url: /faq
