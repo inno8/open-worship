@@ -101,5 +101,8 @@
   },
   "optionalDependencies": {
     "grandiose": "^0.0.4"
+  },
+  "config": {
+    "ndi_optional": true
   }
 }
