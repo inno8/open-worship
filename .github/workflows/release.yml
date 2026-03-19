@@ -28,9 +28,7 @@ jobs:
       
       - name: Install dependencies
         working-directory: desktop
-        run: npm ci --omit=optional
-        env:
-          npm_config_ignore_scripts: true
+        run: npm ci
       
       - name: Build Windows
         working-directory: desktop
@@ -61,9 +59,7 @@ jobs:
       
       - name: Install dependencies
         working-directory: desktop
-        run: npm ci --omit=optional
-        env:
-          npm_config_ignore_scripts: true
+        run: npm ci
       
       - name: Build macOS
         working-directory: desktop
@@ -94,9 +90,7 @@ jobs:
       
       - name: Install dependencies
         working-directory: desktop
-        run: npm ci --omit=optional
-        env:
-          npm_config_ignore_scripts: true
+        run: npm ci
       
       - name: Build Linux
         working-directory: desktop

@@ -12,8 +12,7 @@
     "dist:linux": "vite build && electron-builder --linux",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "rebuild": "electron-rebuild -f -w grandiose",
-    "postinstall": "node scripts/rebuild-ndi.js"
+    "rebuild": "electron-rebuild -f"
   },
   "keywords": [
     "church",
@@ -99,10 +98,5 @@
       "repo": "open-worship"
     }
   },
-  "optionalDependencies": {
-    "grandiose": "^0.0.4"
-  },
-  "config": {
-    "ndi_optional": true
-  }
+
 }
