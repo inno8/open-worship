@@ -21,7 +21,11 @@
     "lyrics",
     "electron"
   ],
-  "author": "inno8",
+  "author": {
+    "name": "inno8",
+    "email": "dev@inno8.nl"
+  },
+  "homepage": "https://github.com/inno8/open-worship",
   "license": "MIT",
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.1",
@@ -90,7 +94,8 @@
         "deb"
       ],
       "icon": "assets/icons",
-      "category": "Utility"
+      "category": "Utility",
+      "maintainer": "inno8 <dev@inno8.nl>"
     },
     "publish": {
       "provider": "github",
