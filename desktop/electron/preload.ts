@@ -103,6 +103,27 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   // ============ WINDOW ============
   focusWindow: () => ipcRenderer.invoke('window:focus'),
+
+  // ============ AUTO-UPDATER ============
+  updates: {
+    checkForUpdates: () => ipcRenderer.invoke('check-for-updates'),
+    downloadUpdate: () => ipcRenderer.invoke('download-update'),
+    installUpdate: () => ipcRenderer.invoke('install-update'),
+    onUpdateAvailable: (callback: (info: { version: string; releaseNotes?: string; releaseDate?: string }) => void) => {
+      ipcRenderer.on('update-available', (_event, info) => callback(info))
+    },
+    onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => {
+      ipcRenderer.on('update-download-progress', (_event, progress) => callback(progress))
+    },
+    onUpdateDownloaded: (callback: (info: { version: string }) => void) => {
+      ipcRenderer.on('update-downloaded', (_event, info) => callback(info))
+    },
+    removeListeners: () => {
+      ipcRenderer.removeAllListeners('update-available')
+      ipcRenderer.removeAllListeners('update-download-progress')
+      ipcRenderer.removeAllListeners('update-downloaded')
+    },
+  },
 })
 
 // Type definitions are in src/types/electron.d.ts

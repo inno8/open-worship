@@ -121,6 +121,17 @@ declare global {
 
       // Window
       focusWindow: () => Promise<boolean>
+
+      // Auto-updater
+      updates: {
+        checkForUpdates: () => Promise<{ success: boolean; updateInfo?: unknown; error?: string }>
+        downloadUpdate: () => Promise<{ success: boolean; error?: string }>
+        installUpdate: () => void
+        onUpdateAvailable: (callback: (info: { version: string; releaseNotes?: string; releaseDate?: string }) => void) => void
+        onDownloadProgress: (callback: (progress: { percent: number; transferred: number; total: number }) => void) => void
+        onUpdateDownloaded: (callback: (info: { version: string }) => void) => void
+        removeListeners: () => void
+      }
     }
   }
 }

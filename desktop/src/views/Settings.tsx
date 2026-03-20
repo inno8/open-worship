@@ -12,7 +12,7 @@ interface DisplayInfo {
   size: { width: number; height: number }
 }
 
-const APP_VERSION = '1.0.0'
+const APP_VERSION = '1.0.1'
 
 const BACKGROUND_PRESETS = [
   '#000000',
@@ -75,6 +75,13 @@ export default function Settings() {
   const [toast, setToast] = useState<string | null>(null)
   const [showClearConfirm, setShowClearConfirm] = useState(false)
   const [hoveredBg, setHoveredBg] = useState<string | null>(null)
+  
+  // Update state
+  const [updateAvailable, setUpdateAvailable] = useState<{ version: string; releaseNotes?: string } | null>(null)
+  const [updateDownloading, setUpdateDownloading] = useState(false)
+  const [updateProgress, setUpdateProgress] = useState(0)
+  const [updateReady, setUpdateReady] = useState(false)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
 
   const { songs } = useSongStore()
   const { schedules } = useScheduleStore()
@@ -127,10 +134,61 @@ export default function Settings() {
       refreshNdiStatus()
     }
     init()
+
+    // Listen for update events
+    if (window.electronAPI?.updates) {
+      window.electronAPI.updates.onUpdateAvailable((info) => {
+        setUpdateAvailable(info)
+      })
+      window.electronAPI.updates.onDownloadProgress((progress) => {
+        setUpdateProgress(Math.round(progress.percent))
+      })
+      window.electronAPI.updates.onUpdateDownloaded(() => {
+        setUpdateDownloading(false)
+        setUpdateReady(true)
+      })
+    }
+
+    return () => {
+      if (window.electronAPI?.updates) {
+        window.electronAPI.updates.removeListeners()
+      }
+    }
   }, [])
 
   function handleFontSizeChange(px: number) {
     setFontSize(`${px / 16}rem`)
+  }
+
+  async function handleCheckForUpdates() {
+    if (!window.electronAPI?.updates) return
+    setCheckingUpdate(true)
+    try {
+      const result = await window.electronAPI.updates.checkForUpdates()
+      if (result.success && !result.updateInfo) {
+        showToast('You are running the latest version')
+      }
+    } catch (e) {
+      console.error('Failed to check for updates:', e)
+    }
+    setCheckingUpdate(false)
+  }
+
+  async function handleDownloadUpdate() {
+    if (!window.electronAPI?.updates) return
+    setUpdateDownloading(true)
+    setUpdateProgress(0)
+    try {
+      await window.electronAPI.updates.downloadUpdate()
+    } catch (e) {
+      console.error('Failed to download update:', e)
+      setUpdateDownloading(false)
+    }
+  }
+
+  function handleInstallUpdate() {
+    if (!window.electronAPI?.updates) return
+    window.electronAPI.updates.installUpdate()
   }
 
   function handleSave() {
@@ -1093,7 +1151,7 @@ export default function Settings() {
                 Project lyrics on secondary displays, manage song libraries, 
                 and create service schedules with ease.
               </p>
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
                 <a 
                   href="https://github.com/inno8/open-worship" 
                   target="_blank" 
@@ -1102,7 +1160,114 @@ export default function Settings() {
                 >
                   View on GitHub →
                 </a>
+                <button
+                  onClick={handleCheckForUpdates}
+                  disabled={checkingUpdate}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: 'rgba(255,255,255,0.1)',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                    borderRadius: '6px',
+                    color: '#ffffff',
+                    fontSize: '13px',
+                    cursor: checkingUpdate ? 'wait' : 'pointer',
+                  }}
+                >
+                  {checkingUpdate ? 'Checking...' : 'Check for Updates'}
+                </button>
               </div>
+
+              {/* Update Available Banner */}
+              {updateAvailable && !updateReady && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '16px',
+                  backgroundColor: 'rgba(34,197,94,0.15)',
+                  border: '1px solid rgba(34,197,94,0.3)',
+                  borderRadius: '12px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#22c55e' }}>
+                        Update Available: v{updateAvailable.version}
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#a0aec0', marginTop: '4px' }}>
+                        A new version is available for download.
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleDownloadUpdate}
+                      disabled={updateDownloading}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#22c55e',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                        cursor: updateDownloading ? 'wait' : 'pointer',
+                      }}
+                    >
+                      {updateDownloading ? `Downloading... ${updateProgress}%` : 'Download Update'}
+                    </button>
+                  </div>
+                  {updateDownloading && (
+                    <div style={{ marginTop: '12px' }}>
+                      <div style={{
+                        height: '6px',
+                        backgroundColor: 'rgba(255,255,255,0.1)',
+                        borderRadius: '3px',
+                        overflow: 'hidden',
+                      }}>
+                        <div style={{
+                          height: '100%',
+                          width: `${updateProgress}%`,
+                          backgroundColor: '#22c55e',
+                          transition: 'width 0.3s',
+                        }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Update Ready Banner */}
+              {updateReady && (
+                <div style={{
+                  marginTop: '16px',
+                  padding: '16px',
+                  backgroundColor: 'rgba(99,102,241,0.15)',
+                  border: '1px solid rgba(99,102,241,0.3)',
+                  borderRadius: '12px',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#6366f1' }}>
+                        Update Ready to Install
+                      </div>
+                      <div style={{ fontSize: '13px', color: '#a0aec0', marginTop: '4px' }}>
+                        Restart the app to apply the update.
+                      </div>
+                    </div>
+                    <button
+                      onClick={handleInstallUpdate}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#6366f1',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      Restart & Update
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </section>
 

@@ -5,6 +5,11 @@ import { randomUUID } from 'crypto'
 import { pathToFileURL } from 'url'
 import * as db from './database'
 import { getNdiOutput } from './ndi/NdiOutput'
+import { autoUpdater } from 'electron-updater'
+
+// Configure auto-updater
+autoUpdater.autoDownload = false // Don't download automatically, let user decide
+autoUpdater.autoInstallOnAppQuit = true
 
 // Backgrounds directory in user data
 const backgroundsDir = path.join(app.getPath('userData'), 'backgrounds')
@@ -417,6 +422,79 @@ app.whenReady().then(() => {
   ensureBackgroundsDir()
 
   createMainWindow()
+
+  // Check for updates (only in production)
+  if (!isDev) {
+    autoUpdater.checkForUpdates().catch(err => {
+      console.log('Auto-update check failed:', err.message)
+    })
+  }
+})
+
+// ============ AUTO-UPDATER ============
+
+autoUpdater.on('checking-for-update', () => {
+  console.log('Checking for update...')
+})
+
+autoUpdater.on('update-available', (info) => {
+  console.log('Update available:', info.version)
+  if (mainWindow) {
+    mainWindow.webContents.send('update-available', {
+      version: info.version,
+      releaseNotes: info.releaseNotes,
+      releaseDate: info.releaseDate,
+    })
+  }
+})
+
+autoUpdater.on('update-not-available', () => {
+  console.log('Update not available - running latest version')
+})
+
+autoUpdater.on('download-progress', (progress) => {
+  if (mainWindow) {
+    mainWindow.webContents.send('update-download-progress', {
+      percent: progress.percent,
+      transferred: progress.transferred,
+      total: progress.total,
+    })
+  }
+})
+
+autoUpdater.on('update-downloaded', (info) => {
+  console.log('Update downloaded:', info.version)
+  if (mainWindow) {
+    mainWindow.webContents.send('update-downloaded', {
+      version: info.version,
+    })
+  }
+})
+
+autoUpdater.on('error', (err) => {
+  console.error('Auto-updater error:', err.message)
+})
+
+ipcMain.handle('check-for-updates', async () => {
+  try {
+    const result = await autoUpdater.checkForUpdates()
+    return { success: true, updateInfo: result?.updateInfo }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+})
+
+ipcMain.handle('download-update', async () => {
+  try {
+    await autoUpdater.downloadUpdate()
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+  }
+})
+
+ipcMain.handle('install-update', () => {
+  autoUpdater.quitAndInstall(false, true)
 })
 
 app.on('window-all-closed', () => {
