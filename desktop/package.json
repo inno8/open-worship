@@ -67,6 +67,11 @@
       "dist-electron/**/*",
       "node_modules/**/*"
     ],
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/koffi/**/*",
+      "node_modules/better-sqlite3/**/*"
+    ],
     "win": {
       "target": [
         "nsis",

@@ -5,9 +5,39 @@
 
 import koffi from 'koffi'
 import path from 'path'
+import fs from 'fs'
 
-// NDI Runtime DLL path
-const NDI_DLL_PATH = 'C:\\Program Files\\NDI\\NDI 6 Runtime\\v6\\Processing.NDI.Lib.x64.dll'
+// Find NDI Runtime DLL - check multiple possible locations
+function findNdiDll(): string | null {
+  const possiblePaths = [
+    // NDI 6
+    'C:\\Program Files\\NDI\\NDI 6 Runtime\\v6\\Processing.NDI.Lib.x64.dll',
+    // NDI 5
+    'C:\\Program Files\\NDI\\NDI 5 Runtime\\v5\\Processing.NDI.Lib.x64.dll',
+    // Check environment variable (NDI SDK sets this)
+    process.env.NDI_RUNTIME_DIR_V6 ? path.join(process.env.NDI_RUNTIME_DIR_V6, 'Processing.NDI.Lib.x64.dll') : '',
+    process.env.NDI_RUNTIME_DIR_V5 ? path.join(process.env.NDI_RUNTIME_DIR_V5, 'Processing.NDI.Lib.x64.dll') : '',
+    // Alternate install locations
+    'C:\\Program Files\\NDI\\NDI Tools\\Runtime\\v6\\Processing.NDI.Lib.x64.dll',
+    'C:\\Program Files (x86)\\NDI\\NDI 6 Runtime\\v6\\Processing.NDI.Lib.x64.dll',
+  ].filter(p => p) // Remove empty strings
+
+  for (const dllPath of possiblePaths) {
+    try {
+      if (fs.existsSync(dllPath)) {
+        console.log('Found NDI DLL at:', dllPath)
+        return dllPath
+      }
+    } catch {
+      // Ignore access errors
+    }
+  }
+
+  console.log('NDI DLL not found in any known location')
+  return null
+}
+
+const NDI_DLL_PATH = findNdiDll()
 
 let ndiLib: koffi.IKoffiLib | null = null
 let initialized = false
@@ -48,6 +78,10 @@ let NDIlib_send_send_video_v2: ((p_instance: unknown, p_video_data: unknown) => 
 
 export function loadNdiLibrary(): boolean {
   if (ndiLib) return true
+  if (!NDI_DLL_PATH) {
+    console.log('NDI DLL path not found')
+    return false
+  }
   
   try {
     ndiLib = koffi.load(NDI_DLL_PATH)
