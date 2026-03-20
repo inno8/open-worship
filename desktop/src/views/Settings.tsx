@@ -12,7 +12,7 @@ interface DisplayInfo {
   size: { width: number; height: number }
 }
 
-const APP_VERSION = '1.0.4'
+const APP_VERSION = '1.0.5'
 
 const BACKGROUND_PRESETS = [
   '#000000',
@@ -161,15 +161,27 @@ export default function Settings() {
   }
 
   async function handleCheckForUpdates() {
-    if (!window.electronAPI?.updates) return
+    if (!window.electronAPI?.updates) {
+      showToast('Updates not available in this environment')
+      return
+    }
     setCheckingUpdate(true)
     try {
       const result = await window.electronAPI.updates.checkForUpdates()
-      if (result.success && !result.updateInfo) {
-        showToast('You are running the latest version')
+      console.log('Update check result:', result)
+      if (result.success) {
+        if (result.updateInfo && (result.updateInfo as { version?: string })?.version) {
+          // Update available - the onUpdateAvailable listener will handle showing the UI
+          showToast(`Update found: v${(result.updateInfo as { version: string }).version}`)
+        } else {
+          showToast('You are running the latest version')
+        }
+      } else {
+        showToast(result.error || 'Failed to check for updates')
       }
     } catch (e) {
       console.error('Failed to check for updates:', e)
+      showToast('Error checking for updates')
     }
     setCheckingUpdate(false)
   }

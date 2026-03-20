@@ -477,9 +477,16 @@ autoUpdater.on('error', (err) => {
 
 ipcMain.handle('check-for-updates', async () => {
   try {
+    console.log('IPC: check-for-updates called')
+    console.log('isDev:', isDev)
+    if (isDev) {
+      return { success: false, error: 'Auto-update not available in development mode' }
+    }
     const result = await autoUpdater.checkForUpdates()
+    console.log('Update check result:', result)
     return { success: true, updateInfo: result?.updateInfo }
   } catch (err) {
+    console.error('Update check error:', err)
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
   }
 })
