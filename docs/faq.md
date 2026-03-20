@@ -1,3 +1,10 @@
+---
+layout: default
+title: FAQ
+nav_order: 9
+description: "Frequently asked questions and troubleshooting"
+---
+
 # FAQ
 
 Common questions and troubleshooting tips for Open Worship.

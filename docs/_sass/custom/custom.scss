@@ -1,0 +1,52 @@
+// Custom styles for Open Worship documentation
+
+// Screenshot styling
+img {
+  border-radius: 8px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  margin: 1.5rem 0;
+  max-width: 100%;
+}
+
+// Feature table styling
+table {
+  th:first-child,
+  td:first-child {
+    width: 180px;
+    white-space: nowrap;
+  }
+}
+
+// Hero section for home
+.fs-9 {
+  font-size: 2.5rem !important;
+  font-weight: 700;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+// Primary button styling
+.btn-primary {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border: none;
+  &:hover {
+    background: linear-gradient(135deg, #5a6fd6 0%, #693f8f 100%);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+  }
+}
+
+// Code blocks
+pre {
+  border-radius: 8px;
+  background: #1e1e2e;
+}
+
+// Callout boxes
+.highlight, .important, .new, .note, .warning {
+  border-radius: 8px;
+  padding: 1rem;
+  margin: 1rem 0;
+}

@@ -1,3 +1,10 @@
+---
+layout: default
+title: Adding Songs
+nav_order: 4
+parent: User Guide
+---
+
 # Adding Songs
 
 This guide explains how to add songs to your library, the lyrics format (including section markers), how to import from text files, and how to edit, delete, and organize songs with tags.

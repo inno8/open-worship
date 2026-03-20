@@ -2,10 +2,51 @@ title: Open Worship
 description: Free, open-source church presentation software for worship lyrics
 url: https://inno8.github.io
 baseurl: /open-worship
-logo: /assets/images/logo.png
-favicon: /assets/images/logo.png
 
-theme: jekyll-theme-cayman
+remote_theme: just-the-docs/just-the-docs
+
+color_scheme: dark
+
+logo: /open-worship/assets/images/logo.png
+favicon_ico: /open-worship/assets/images/logo.png
+
+search_enabled: true
+search:
+  heading_level: 2
+  previews: 3
+
+aux_links:
+  "Download":
+    - "https://github.com/inno8/open-worship/releases"
+  "GitHub":
+    - "https://github.com/inno8/open-worship"
+
+aux_links_new_tab: true
+
+footer_content: "Made with ❤️ for churches everywhere. MIT License."
+
+gh_edit_link: true
+gh_edit_link_text: "Edit this page on GitHub"
+gh_edit_repository: "https://github.com/inno8/open-worship"
+gh_edit_branch: "master"
+gh_edit_source: docs
+gh_edit_view_mode: "tree"
+
+callouts:
+  highlight:
+    color: purple
+  important:
+    title: Important
+    color: blue
+  new:
+    title: New
+    color: green
+  note:
+    title: Note
+    color: yellow
+  warning:
+    title: Warning
+    color: red
 
 plugins:
   - jekyll-relative-links
@@ -14,22 +55,8 @@ relative_links:
   enabled: true
   collections: true
 
-# Default front matter
 defaults:
   - scope:
       path: ""
     values:
       layout: default
-
-# Navigation
-nav:
-  - title: Home
-    url: /
-  - title: Getting Started
-    url: /getting-started
-  - title: User Guide
-    url: /user-guide
-  - title: NDI & OBS
-    url: /ndi-obs-setup
-  - title: FAQ
-    url: /faq

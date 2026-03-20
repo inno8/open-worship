@@ -1,3 +1,10 @@
+---
+layout: default
+title: Building Schedules
+nav_order: 5
+parent: User Guide
+---
+
 # Building Schedules
 
 This guide explains how to create a schedule, add songs and other items, reorder them, and use custom text and blank slides.

@@ -1,3 +1,10 @@
+---
+layout: default
+title: Running a Service
+nav_order: 6
+parent: User Guide
+---
+
 # Running a Service
 
 This guide explains how to run lyrics during a service: using the **GO LIVE** button, the Presenter view, keyboard controls, multi-display setup, and quick access to songs.

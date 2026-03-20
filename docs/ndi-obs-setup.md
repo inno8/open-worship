@@ -1,6 +1,8 @@
 ---
 layout: default
-title: NDI & OBS Setup - Open Worship
+title: NDI & OBS Setup
+nav_order: 7
+description: "Set up NDI output for OBS livestream overlays"
 ---
 
 # NDI & OBS Setup
@@ -172,3 +174,4 @@ This is simpler but doesn't support transparency.
 | 6 | Add Chroma Key filter (for transparency) |
 
 Now your lyrics are ready for livestreaming! 🎉
+

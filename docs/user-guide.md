@@ -1,6 +1,9 @@
 ---
 layout: default
-title: User Guide - Open Worship
+title: User Guide
+nav_order: 3
+has_children: true
+description: "Complete guide to all Open Worship features"
 ---
 
 # User Guide

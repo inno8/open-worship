@@ -1,3 +1,10 @@
+---
+layout: default
+title: Keyboard Shortcuts
+nav_order: 8
+description: "Quick reference for all keyboard shortcuts"
+---
+
 # Keyboard Shortcuts
 
 This page lists the keyboard shortcuts available in Open Worship. They apply mainly in the **Presenter** view when focus is not in a text field (e.g. not in the song search box).
