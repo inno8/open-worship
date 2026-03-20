@@ -12,7 +12,7 @@ interface DisplayInfo {
   size: { width: number; height: number }
 }
 
-const APP_VERSION = '1.0.1'
+const APP_VERSION = '1.0.2'
 
 const BACKGROUND_PRESETS = [
   '#000000',

@@ -56,5 +56,25 @@ electron.contextBridge.exposeInMainWorld("electronAPI", {
   // ============ API PROXY (CORS bypass) ============
   apiFetch: (options) => electron.ipcRenderer.invoke("api:fetch", options),
   // ============ WINDOW ============
-  focusWindow: () => electron.ipcRenderer.invoke("window:focus")
+  focusWindow: () => electron.ipcRenderer.invoke("window:focus"),
+  // ============ AUTO-UPDATER ============
+  updates: {
+    checkForUpdates: () => electron.ipcRenderer.invoke("check-for-updates"),
+    downloadUpdate: () => electron.ipcRenderer.invoke("download-update"),
+    installUpdate: () => electron.ipcRenderer.invoke("install-update"),
+    onUpdateAvailable: (callback) => {
+      electron.ipcRenderer.on("update-available", (_event, info) => callback(info));
+    },
+    onDownloadProgress: (callback) => {
+      electron.ipcRenderer.on("update-download-progress", (_event, progress) => callback(progress));
+    },
+    onUpdateDownloaded: (callback) => {
+      electron.ipcRenderer.on("update-downloaded", (_event, info) => callback(info));
+    },
+    removeListeners: () => {
+      electron.ipcRenderer.removeAllListeners("update-available");
+      electron.ipcRenderer.removeAllListeners("update-download-progress");
+      electron.ipcRenderer.removeAllListeners("update-downloaded");
+    }
+  }
 });

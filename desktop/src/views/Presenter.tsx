@@ -96,6 +96,30 @@ export default function Presenter() {
 
   useEffect(() => { loadBackgrounds() }, [])
   
+  // Re-send current slide when appearance settings change (so Settings changes apply immediately)
+  useEffect(() => {
+    if (isLive && currentSlide) {
+      const effectiveBg = slideOverrideBg || currentSlide.backgroundImage || defaultBackground
+      const bgStyle = getBackgroundStyle(effectiveBg)
+      const updatedSlide = { 
+        ...currentSlide, 
+        fontSize, 
+        fontFamily, 
+        fontWeight, 
+        textColor, 
+        shadowBlur, 
+        shadowOffsetX, 
+        shadowOffsetY, 
+        shadowColor, 
+        ...bgStyle 
+      }
+      setCurrentSlide(updatedSlide)
+      if (window.electronAPI) {
+        window.electronAPI.updatePresentation(updatedSlide)
+      }
+    }
+  }, [fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, defaultBackground])
+  
   // Sync apiSchedules with cache when they change
   useEffect(() => {
     setCachedApiSchedules(apiSchedules)
