@@ -69,7 +69,7 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
       <div className="px-6 py-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <h1 className="text-xl font-bold text-white flex items-center gap-3">
           <img 
-            src="/assets/icons/icon.svg" 
+            src="./assets/icons/icon.svg" 
             alt="Open Worship" 
             style={{ width: 40, height: 40 }}
           />

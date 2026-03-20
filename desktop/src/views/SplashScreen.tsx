@@ -110,7 +110,7 @@ export default function SplashScreen({ onComplete }: SplashScreenProps) {
     >
       {/* Logo */}
       <img 
-        src="/assets/icons/icon.svg" 
+        src="./assets/icons/icon.svg" 
         alt="Open Worship" 
         style={{ 
           width: 120, 
