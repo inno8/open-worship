@@ -1,6 +1,6 @@
 {
   "name": "open-worship",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Free, open-source church presentation software",
   "main": "dist-electron/main.js",
   "scripts": {

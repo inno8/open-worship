@@ -12,7 +12,7 @@ interface DisplayInfo {
   size: { width: number; height: number }
 }
 
-const APP_VERSION = '1.0.2'
+const APP_VERSION = '1.0.3'
 
 const BACKGROUND_PRESETS = [
   '#000000',
@@ -1151,7 +1151,7 @@ export default function Settings() {
                 Project lyrics on secondary displays, manage song libraries, 
                 and create service schedules with ease.
               </p>
-              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: '16px', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                 <a 
                   href="https://github.com/inno8/open-worship" 
                   target="_blank" 
@@ -1160,96 +1160,38 @@ export default function Settings() {
                 >
                   View on GitHub →
                 </a>
-                <button
-                  onClick={handleCheckForUpdates}
-                  disabled={checkingUpdate}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: 'rgba(255,255,255,0.1)',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                    borderRadius: '6px',
-                    color: '#ffffff',
-                    fontSize: '13px',
-                    cursor: checkingUpdate ? 'wait' : 'pointer',
-                  }}
-                >
-                  {checkingUpdate ? 'Checking...' : 'Check for Updates'}
-                </button>
               </div>
 
-              {/* Update Available Banner */}
-              {updateAvailable && !updateReady && (
-                <div style={{
-                  marginTop: '16px',
-                  padding: '16px',
-                  backgroundColor: 'rgba(34,197,94,0.15)',
-                  border: '1px solid rgba(34,197,94,0.3)',
-                  borderRadius: '12px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#22c55e' }}>
-                        Update Available: v{updateAvailable.version}
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#a0aec0', marginTop: '4px' }}>
-                        A new version is available for download.
-                      </div>
+              {/* Update Section - Always Visible */}
+              <div style={{
+                marginTop: '16px',
+                padding: '16px',
+                backgroundColor: updateReady ? 'rgba(99,102,241,0.15)' : updateAvailable ? 'rgba(34,197,94,0.15)' : 'rgba(255,255,255,0.05)',
+                border: `1px solid ${updateReady ? 'rgba(99,102,241,0.3)' : updateAvailable ? 'rgba(34,197,94,0.3)' : 'rgba(255,255,255,0.1)'}`,
+                borderRadius: '12px',
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' }}>
+                  <div>
+                    <div style={{ fontSize: '14px', fontWeight: 600, color: updateReady ? '#6366f1' : updateAvailable ? '#22c55e' : '#ffffff' }}>
+                      {updateReady 
+                        ? 'Update Ready to Install' 
+                        : updateAvailable 
+                          ? `Update Available: v${updateAvailable.version}`
+                          : 'Software Update'}
                     </div>
-                    <button
-                      onClick={handleDownloadUpdate}
-                      disabled={updateDownloading}
-                      style={{
-                        padding: '8px 16px',
-                        backgroundColor: '#22c55e',
-                        border: 'none',
-                        borderRadius: '8px',
-                        color: '#ffffff',
-                        fontWeight: 600,
-                        fontSize: '14px',
-                        cursor: updateDownloading ? 'wait' : 'pointer',
-                      }}
-                    >
-                      {updateDownloading ? `Downloading... ${updateProgress}%` : 'Download Update'}
-                    </button>
+                    <div style={{ fontSize: '13px', color: '#a0aec0', marginTop: '4px' }}>
+                      {updateReady 
+                        ? 'Restart the app to apply the update.'
+                        : updateAvailable
+                          ? 'A new version is available.'
+                          : updateDownloading
+                            ? `Downloading... ${updateProgress}%`
+                            : `Current version: ${APP_VERSION}`}
+                    </div>
                   </div>
-                  {updateDownloading && (
-                    <div style={{ marginTop: '12px' }}>
-                      <div style={{
-                        height: '6px',
-                        backgroundColor: 'rgba(255,255,255,0.1)',
-                        borderRadius: '3px',
-                        overflow: 'hidden',
-                      }}>
-                        <div style={{
-                          height: '100%',
-                          width: `${updateProgress}%`,
-                          backgroundColor: '#22c55e',
-                          transition: 'width 0.3s',
-                        }} />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Update Ready Banner */}
-              {updateReady && (
-                <div style={{
-                  marginTop: '16px',
-                  padding: '16px',
-                  backgroundColor: 'rgba(99,102,241,0.15)',
-                  border: '1px solid rgba(99,102,241,0.3)',
-                  borderRadius: '12px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontSize: '14px', fontWeight: 600, color: '#6366f1' }}>
-                        Update Ready to Install
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#a0aec0', marginTop: '4px' }}>
-                        Restart the app to apply the update.
-                      </div>
-                    </div>
+                  
+                  {/* Button changes based on state */}
+                  {updateReady ? (
                     <button
                       onClick={handleInstallUpdate}
                       style={{
@@ -1265,9 +1207,64 @@ export default function Settings() {
                     >
                       Restart & Update
                     </button>
-                  </div>
+                  ) : updateAvailable ? (
+                    <button
+                      onClick={handleDownloadUpdate}
+                      disabled={updateDownloading}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#22c55e',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                        cursor: updateDownloading ? 'wait' : 'pointer',
+                        opacity: updateDownloading ? 0.7 : 1,
+                      }}
+                    >
+                      {updateDownloading ? 'Downloading...' : 'Install Update'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleCheckForUpdates}
+                      disabled={checkingUpdate}
+                      style={{
+                        padding: '8px 16px',
+                        backgroundColor: '#e94560',
+                        border: 'none',
+                        borderRadius: '8px',
+                        color: '#ffffff',
+                        fontWeight: 600,
+                        fontSize: '14px',
+                        cursor: checkingUpdate ? 'wait' : 'pointer',
+                        opacity: checkingUpdate ? 0.7 : 1,
+                      }}
+                    >
+                      {checkingUpdate ? 'Checking...' : 'Check for Updates'}
+                    </button>
+                  )}
                 </div>
-              )}
+
+                {/* Download Progress Bar */}
+                {updateDownloading && (
+                  <div style={{ marginTop: '12px' }}>
+                    <div style={{
+                      height: '6px',
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      borderRadius: '3px',
+                      overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${updateProgress}%`,
+                        backgroundColor: '#22c55e',
+                        transition: 'width 0.3s',
+                      }} />
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
 
