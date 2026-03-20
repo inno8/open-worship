@@ -24,7 +24,7 @@ protocol.registerSchemesAsPrivileged([{
 let mainWindow: BrowserWindow | null = null
 let presentationWindow: BrowserWindow | null = null
 
-const isDev = process.env.NODE_ENV === 'development'
+const isDev = !app.isPackaged
 
 function createMainWindow() {
   // Get icon path based on platform
@@ -476,18 +476,21 @@ autoUpdater.on('error', (err) => {
 })
 
 ipcMain.handle('check-for-updates', async () => {
+  console.log('IPC: check-for-updates called')
+  console.log('app.isPackaged:', app.isPackaged)
+  
+  if (!app.isPackaged) {
+    return { success: false, error: 'Auto-update not available in development mode. Install the app to use updates.' }
+  }
+  
   try {
-    console.log('IPC: check-for-updates called')
-    console.log('isDev:', isDev)
-    if (isDev) {
-      return { success: false, error: 'Auto-update not available in development mode' }
-    }
     const result = await autoUpdater.checkForUpdates()
-    console.log('Update check result:', result)
+    console.log('Update check result:', JSON.stringify(result?.updateInfo))
     return { success: true, updateInfo: result?.updateInfo }
   } catch (err) {
     console.error('Update check error:', err)
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' }
+    const errorMsg = err instanceof Error ? err.message : 'Unknown error'
+    return { success: false, error: errorMsg }
   }
 })
 

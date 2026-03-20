@@ -15819,7 +15819,7 @@ require$$1.protocol.registerSchemesAsPrivileged([{
 }]);
 let mainWindow = null;
 let presentationWindow = null;
-const isDev = process.env.NODE_ENV === "development";
+const isDev = !require$$1.app.isPackaged;
 function createMainWindow() {
   const iconPath = isDev ? path.join(__dirname, "../public/assets/icons/icon.png") : path.join(__dirname, "../dist/assets/icons/icon.png");
   mainWindow = new require$$1.BrowserWindow({
@@ -16178,11 +16178,19 @@ mainExports.autoUpdater.on("error", (err) => {
   console.error("Auto-updater error:", err.message);
 });
 require$$1.ipcMain.handle("check-for-updates", async () => {
+  console.log("IPC: check-for-updates called");
+  console.log("app.isPackaged:", require$$1.app.isPackaged);
+  if (!require$$1.app.isPackaged) {
+    return { success: false, error: "Auto-update not available in development mode. Install the app to use updates." };
+  }
   try {
     const result = await mainExports.autoUpdater.checkForUpdates();
+    console.log("Update check result:", JSON.stringify(result == null ? void 0 : result.updateInfo));
     return { success: true, updateInfo: result == null ? void 0 : result.updateInfo };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
+    console.error("Update check error:", err);
+    const errorMsg = err instanceof Error ? err.message : "Unknown error";
+    return { success: false, error: errorMsg };
   }
 });
 require$$1.ipcMain.handle("download-update", async () => {
