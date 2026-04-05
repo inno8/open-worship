@@ -20,39 +20,46 @@ export interface RenderedFrame {
 
 const imageCache = new Map<string, HTMLImageElement>()
 
-function loadBackgroundImage(filename: string): Promise<HTMLImageElement> {
-  const cached = imageCache.get(filename)
+function loadBackgroundImage(src: string): Promise<HTMLImageElement> {
+  const cached = imageCache.get(src)
   if (cached && cached.complete) return Promise.resolve(cached)
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
     img.onload = () => {
-      imageCache.set(filename, img)
+      imageCache.set(src, img)
       resolve(img)
     }
-    img.onerror = () => reject(new Error(`Failed to load background: ${filename}`))
-    // Use app-bg protocol so Electron serves from backgrounds dir
-    img.src = `app-bg:///${filename}`
+    img.onerror = () => reject(new Error(`Failed to load background: ${src}`))
+    img.src = src
   })
 }
 
-function extractBackgroundFilename(backgroundImage?: string, useLowerThird = false): string | null {
+/**
+ * Returns the image source URL to load for the background.
+ * Handles both app-bg:// protocol URLs and data URLs.
+ */
+function resolveBackgroundSrc(backgroundImage?: string, useLowerThird = false): string | null {
   if (!backgroundImage) return null
+
+  // Data URLs (from Announcements file import) — use directly
+  if (backgroundImage.startsWith('data:')) {
+    return backgroundImage
+  }
+
+  // app-bg:// protocol URLs (from Settings background picker)
   const m = backgroundImage.match(/app-bg:\/\/\/?([^)]+)/)
   if (!m) return null
-  
+
   let filename = m[1].trim()
-  
+
   // For lower-third mode, use the _lower version of the background
   if (useLowerThird && filename) {
-    // Replace extension with _lower.png (new imports) or _lower.jpg (old imports)
-    // Try .png first as that's what new imports use
-    const ext = filename.match(/\.(jpg|jpeg|png|webp)$/i)?.[1] || 'png'
     const lowerFilename = filename.replace(/\.(jpg|jpeg|png|webp)$/i, '_lower.png')
-    return lowerFilename
+    return `app-bg:///${lowerFilename}`
   }
-  
-  return filename
+
+  return `app-bg:///${filename}`
 }
 
 export class NdiFrameRenderer {
@@ -130,26 +137,26 @@ export class NdiFrameRenderer {
 
     // Use lower-third version of background when in lower-third mode
     const useLowerThird = this.currentMode === 'lower-third'
-    const bgFilename = extractBackgroundFilename(slide?.backgroundImage, useLowerThird)
-    
+    const bgSrc = resolveBackgroundSrc(slide?.backgroundImage, useLowerThird)
+
     // Apply opacity for lower-third mode
     const opacity = useLowerThird ? (slide?.lowerThirdOpacity ?? 1) : 1
     ctx.globalAlpha = opacity
-    
+
     let backgroundDrawn = false
-    
-    if (bgFilename) {
+
+    if (bgSrc) {
       try {
-        const img = await loadBackgroundImage(bgFilename)
+        const img = await loadBackgroundImage(bgSrc)
         ctx.drawImage(img, 0, 0, width, height)
         backgroundDrawn = true
       } catch {
         // Try full-size fallback if lower-third version doesn't exist
         if (useLowerThird) {
-          const fullFilename = extractBackgroundFilename(slide?.backgroundImage, false)
-          if (fullFilename) {
+          const fullSrc = resolveBackgroundSrc(slide?.backgroundImage, false)
+          if (fullSrc) {
             try {
-              const imgFull = await loadBackgroundImage(fullFilename)
+              const imgFull = await loadBackgroundImage(fullSrc)
               ctx.drawImage(imgFull, 0, 0, width, height)
               backgroundDrawn = true
             } catch {

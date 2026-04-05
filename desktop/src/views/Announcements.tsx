@@ -259,6 +259,7 @@ export default function Announcements() {
       setCurrentSlide({
         text: '',
         sectionType: 'announcement',
+        textPosition: 'lower-third',
         backgroundImage: item.imagePath,
       })
     } else if (content.type === 'text') {
@@ -266,6 +267,7 @@ export default function Announcements() {
       setCurrentSlide({
         text: item.content,
         sectionType: 'announcement',
+        textPosition: 'center',
         fontSize: `${item.formatting.fontSize}px`,
         textColor: item.formatting.textColor,
         fontWeight: item.formatting.bold ? 700 : 400,
@@ -276,6 +278,7 @@ export default function Announcements() {
       setCurrentSlide({
         text: '',
         sectionType: 'announcement',
+        textPosition: 'center',
         backgroundImage: item.imagePath,
       })
     }
