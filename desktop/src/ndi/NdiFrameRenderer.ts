@@ -36,10 +36,23 @@ function loadBackgroundImage(filename: string): Promise<HTMLImageElement> {
   })
 }
 
-function extractBackgroundFilename(backgroundImage?: string): string | null {
+function extractBackgroundFilename(backgroundImage?: string, useLowerThird = false): string | null {
   if (!backgroundImage) return null
   const m = backgroundImage.match(/app-bg:\/\/\/?([^)]+)/)
-  return m ? m[1].trim() : null
+  if (!m) return null
+  
+  let filename = m[1].trim()
+  
+  // For lower-third mode, use the _lower version of the background
+  if (useLowerThird && filename) {
+    // Replace extension with _lower.png (new imports) or _lower.jpg (old imports)
+    // Try .png first as that's what new imports use
+    const ext = filename.match(/\.(jpg|jpeg|png|webp)$/i)?.[1] || 'png'
+    const lowerFilename = filename.replace(/\.(jpg|jpeg|png|webp)$/i, '_lower.png')
+    return lowerFilename
+  }
+  
+  return filename
 }
 
 export class NdiFrameRenderer {
@@ -107,22 +120,58 @@ export class NdiFrameRenderer {
 
     ctx.clearRect(0, 0, width, height)
 
-    // 1. Draw background (color then image) so NDI frame is not transparent
-    const bgColor = slide?.backgroundColor ?? '#000000'
-    ctx.fillStyle = bgColor
-    ctx.fillRect(0, 0, width, height)
+    // If slide is null (offline) or blank (blacked), return fully transparent frame
+    // This ensures OBS shows nothing instead of a black rectangle
+    if (!slide || slide.sectionType === 'blank') {
+      // Canvas is already cleared to transparent by clearRect
+      this.cachedFrame = this.extractFrame()
+      return this.cachedFrame
+    }
 
-    const bgFilename = extractBackgroundFilename(slide?.backgroundImage)
+    // Use lower-third version of background when in lower-third mode
+    const useLowerThird = this.currentMode === 'lower-third'
+    const bgFilename = extractBackgroundFilename(slide?.backgroundImage, useLowerThird)
+    
+    // Apply opacity for lower-third mode
+    const opacity = useLowerThird ? (slide?.lowerThirdOpacity ?? 1) : 1
+    ctx.globalAlpha = opacity
+    
+    let backgroundDrawn = false
+    
     if (bgFilename) {
       try {
         const img = await loadBackgroundImage(bgFilename)
         ctx.drawImage(img, 0, 0, width, height)
+        backgroundDrawn = true
       } catch {
-        // Keep solid color if image fails to load
+        // Try full-size fallback if lower-third version doesn't exist
+        if (useLowerThird) {
+          const fullFilename = extractBackgroundFilename(slide?.backgroundImage, false)
+          if (fullFilename) {
+            try {
+              const imgFull = await loadBackgroundImage(fullFilename)
+              ctx.drawImage(imgFull, 0, 0, width, height)
+              backgroundDrawn = true
+            } catch {
+              // Will fall back to solid color below
+            }
+          }
+        }
       }
     }
+    
+    // Only fill with solid color if no background image was drawn
+    // This prevents black showing through/above the background
+    if (!backgroundDrawn) {
+      const bgColor = slide?.backgroundColor ?? '#000000'
+      ctx.fillStyle = bgColor
+      ctx.fillRect(0, 0, width, height)
+    }
+    
+    // Reset opacity for text rendering
+    ctx.globalAlpha = 1
 
-    if (!slide || !slide.text || slide.sectionType === 'blank') {
+    if (!slide.text) {
       this.cachedFrame = this.extractFrame()
       return this.cachedFrame
     }
@@ -147,10 +196,12 @@ export class NdiFrameRenderer {
     const lineHeight = fontSize * 1.4
     const totalHeight = lines.length * lineHeight
     
-    // In lower-third mode, the canvas IS the lower third (360px tall)
-    // So we just center the text vertically within that space
-    // In center mode, the canvas is 1080px and we center there
-    const startY = (height - totalHeight) / 2 + lineHeight / 2
+    // In lower-third mode, position text lower (57% down from top = 26px below center)
+    // In center mode, center the text vertically
+    const verticalOffset = this.currentMode === 'lower-third' 
+      ? height * 0.57 - totalHeight / 2 + lineHeight / 2  // ~26px below center
+      : (height - totalHeight) / 2 + lineHeight / 2       // centered
+    const startY = verticalOffset
 
     for (let i = 0; i < lines.length; i++) {
       const y = startY + i * lineHeight

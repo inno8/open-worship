@@ -3,6 +3,7 @@ import Sidebar from './components/Sidebar'
 import Library from './views/Library'
 import Schedule from './views/Schedule'
 import Presenter from './views/Presenter'
+import Announcements from './views/Announcements'
 import Settings from './views/Settings'
 import SplashScreen from './views/SplashScreen'
 import type { SlideData } from './stores/presentationStore'
@@ -10,7 +11,7 @@ import { wsSync } from './services/WebSocketSync'
 import { startHeartbeat, stopHeartbeat, requestNotificationPermission } from './services/heartbeatService'
 import { useSyncStore } from './stores/syncStore'
 
-type View = 'splash' | 'library' | 'schedule' | 'presenter' | 'settings'
+type View = 'splash' | 'library' | 'schedule' | 'presenter' | 'announcements' | 'settings'
 
 const FADE_MS = 350
 
@@ -95,6 +96,8 @@ function App() {
         return <Library />
       case 'schedule':
         return <Schedule />
+      case 'announcements':
+        return <Announcements />
       case 'settings':
         return <Settings />
       default:

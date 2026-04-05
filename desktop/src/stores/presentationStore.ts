@@ -18,6 +18,7 @@ export interface SlideData {
   shadowOffsetX?: number
   shadowOffsetY?: number
   shadowColor?: string
+  lowerThirdOpacity?: number
 }
 
 // Convert a background value (color string or filename) to CSS properties
@@ -54,6 +55,7 @@ interface PresentationState {
   shadowOffsetX: number
   shadowOffsetY: number
   shadowColor: string
+  lowerThirdOpacity: number
 
   // NDI
   ndiEnabled: boolean
@@ -82,6 +84,7 @@ interface PresentationState {
   setShadowOffsetX: (offsetX: number) => void
   setShadowOffsetY: (offsetY: number) => void
   setShadowColor: (color: string) => void
+  setLowerThirdOpacity: (opacity: number) => void
   loadBackgrounds: () => Promise<void>
   addBackgrounds: () => Promise<string[]>
   removeBackground: (filename: string) => Promise<void>
@@ -112,6 +115,7 @@ export const usePresentationStore = create<PresentationState>()(
       shadowOffsetX: 2,
       shadowOffsetY: 2,
       shadowColor: 'rgba(0,0,0,0.8)',
+      lowerThirdOpacity: 1,
       ndiEnabled: true,
       ndiSourceName: 'Open Worship',
       ndiRunning: false,
@@ -129,7 +133,7 @@ export const usePresentationStore = create<PresentationState>()(
   setCurrentSlide: (currentSlide) => set({ currentSlide }),
   
   goToSection: (index) => {
-    const { sections, fontSize, fontFamily, fontWeight, textColor, defaultBackground, textPosition, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor } = get()
+    const { sections, fontSize, fontFamily, fontWeight, textColor, defaultBackground, textPosition, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity } = get()
     if (index >= 0 && index < sections.length) {
       const section = sections[index]
       const text = section.lines[0] || ''
@@ -152,6 +156,7 @@ export const usePresentationStore = create<PresentationState>()(
           shadowOffsetX,
           shadowOffsetY,
           shadowColor,
+          lowerThirdOpacity,
           ...bgStyle,
         },
       })
@@ -161,7 +166,7 @@ export const usePresentationStore = create<PresentationState>()(
   },
 
   goToLine: (sectionIndex, lineIndex) => {
-    const { sections, fontSize, fontFamily, fontWeight, textColor, defaultBackground, textPosition, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor } = get()
+    const { sections, fontSize, fontFamily, fontWeight, textColor, defaultBackground, textPosition, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity } = get()
     if (sectionIndex >= 0 && sectionIndex < sections.length) {
       const section = sections[sectionIndex]
       if (lineIndex >= 0 && lineIndex < section.lines.length) {
@@ -183,6 +188,7 @@ export const usePresentationStore = create<PresentationState>()(
             shadowOffsetX,
             shadowOffsetY,
             shadowColor,
+            lowerThirdOpacity,
             ...bgStyle,
           },
         })
@@ -258,6 +264,7 @@ export const usePresentationStore = create<PresentationState>()(
       setShadowOffsetX: (shadowOffsetX) => set({ shadowOffsetX }),
       setShadowOffsetY: (shadowOffsetY) => set({ shadowOffsetY }),
       setShadowColor: (shadowColor) => set({ shadowColor }),
+      setLowerThirdOpacity: (lowerThirdOpacity) => set({ lowerThirdOpacity }),
 
       loadBackgrounds: async () => {
         if (window.electronAPI?.backgrounds) {
@@ -347,6 +354,7 @@ export const usePresentationStore = create<PresentationState>()(
         shadowOffsetX: state.shadowOffsetX,
         shadowOffsetY: state.shadowOffsetY,
         shadowColor: state.shadowColor,
+        lowerThirdOpacity: state.lowerThirdOpacity,
       }),
     }
   )

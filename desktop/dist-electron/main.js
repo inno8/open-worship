@@ -15810,6 +15810,9 @@ function requireMain() {
   return main$1;
 }
 var mainExports = requireMain();
+const BG_WIDTH_FULL = 1920;
+const BG_HEIGHT_FULL = 1080;
+const BG_HEIGHT_LOWER_THIRD = 360;
 mainExports.autoUpdater.autoDownload = false;
 mainExports.autoUpdater.autoInstallOnAppQuit = true;
 const backgroundsDir = path.join(require$$1.app.getPath("userData"), "backgrounds");
@@ -16029,19 +16032,59 @@ require$$1.ipcMain.handle("backgrounds:import", async () => {
   console.log("[backgrounds:import] destination dir:", backgroundsDir);
   const imported = [];
   for (const filePath of result.filePaths) {
-    const ext = path.extname(filePath);
-    const filename = `${require$$0$3.randomUUID()}${ext}`;
+    const uuid2 = require$$0$3.randomUUID();
+    const filename = `${uuid2}.png`;
+    const filenameLower = `${uuid2}_lower.png`;
     const destPath = path.join(backgroundsDir, filename);
+    const destPathLower = path.join(backgroundsDir, filenameLower);
     try {
-      fs$1.copyFileSync(filePath, destPath);
-      if (fs$1.existsSync(destPath)) {
-        imported.push(filename);
-        console.log("[backgrounds:import] copied:", path.basename(filePath), "->", filename);
+      const img = require$$1.nativeImage.createFromPath(filePath);
+      if (img.isEmpty()) {
+        console.error("[backgrounds:import] failed to load:", filePath);
+        continue;
+      }
+      const srcSize = img.getSize();
+      const aspectRatio = srcSize.width / srcSize.height;
+      console.log("[backgrounds:import] source:", path.basename(filePath), `${srcSize.width}x${srcSize.height}`, `aspect: ${aspectRatio.toFixed(2)}`);
+      const isLowerThirdSized = srcSize.height < 500 || aspectRatio > 4;
+      if (isLowerThirdSized) {
+        console.log("[backgrounds:import] detected lower-third sized image");
+        const scaledBanner = img.resize({
+          width: BG_WIDTH_FULL,
+          height: BG_HEIGHT_LOWER_THIRD,
+          quality: "best"
+        });
+        fs$1.writeFileSync(destPath, scaledBanner.toPNG());
+        const lowerImg = img.resize({
+          width: BG_WIDTH_FULL,
+          height: BG_HEIGHT_LOWER_THIRD,
+          quality: "best"
+        });
+        fs$1.writeFileSync(destPathLower, lowerImg.toPNG());
       } else {
-        console.error("[backgrounds:import] copy reported success but file missing:", destPath);
+        const fullImg = img.resize({
+          width: BG_WIDTH_FULL,
+          height: BG_HEIGHT_FULL,
+          quality: "best"
+        });
+        fs$1.writeFileSync(destPath, fullImg.toPNG());
+        const lowerImg = fullImg.crop({
+          x: 0,
+          y: BG_HEIGHT_FULL - BG_HEIGHT_LOWER_THIRD,
+          // Start 720px from top (bottom 360px)
+          width: BG_WIDTH_FULL,
+          height: BG_HEIGHT_LOWER_THIRD
+        });
+        fs$1.writeFileSync(destPathLower, lowerImg.toPNG());
+      }
+      if (fs$1.existsSync(destPath) && fs$1.existsSync(destPathLower)) {
+        imported.push(filename);
+        console.log("[backgrounds:import] created:", filename, "and", filenameLower);
+      } else {
+        console.error("[backgrounds:import] processing succeeded but file(s) missing");
       }
     } catch (err) {
-      console.error("[backgrounds:import] copy failed:", filePath, "->", destPath, err);
+      console.error("[backgrounds:import] processing failed:", filePath, err);
     }
   }
   return imported;
@@ -16049,8 +16092,17 @@ require$$1.ipcMain.handle("backgrounds:import", async () => {
 require$$1.ipcMain.handle("backgrounds:remove", (_event, filename) => {
   const safeName = path.basename(filename);
   const filePath = path.join(backgroundsDir, safeName);
+  const baseName = safeName.replace(/\.(jpg|jpeg|png|webp)$/i, "");
+  const lowerPathPng = path.join(backgroundsDir, `${baseName}_lower.png`);
+  const lowerPathJpg = path.join(backgroundsDir, `${baseName}_lower.jpg`);
   if (fs$1.existsSync(filePath)) {
     fs$1.unlinkSync(filePath);
+  }
+  if (fs$1.existsSync(lowerPathPng)) {
+    fs$1.unlinkSync(lowerPathPng);
+  }
+  if (fs$1.existsSync(lowerPathJpg)) {
+    fs$1.unlinkSync(lowerPathJpg);
   }
   return true;
 });

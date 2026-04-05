@@ -1,4 +1,4 @@
-import { app, BrowserWindow, screen, ipcMain, protocol, net, dialog } from 'electron'
+import { app, BrowserWindow, screen, ipcMain, protocol, net, dialog, nativeImage } from 'electron'
 import path from 'path'
 import fs from 'fs'
 import { randomUUID } from 'crypto'
@@ -6,6 +6,11 @@ import { pathToFileURL } from 'url'
 import * as db from './database'
 import { getNdiOutput } from './ndi/NdiOutput'
 import { autoUpdater } from 'electron-updater'
+
+// Background dimensions
+const BG_WIDTH_FULL = 1920
+const BG_HEIGHT_FULL = 1080
+const BG_HEIGHT_LOWER_THIRD = 360
 
 // Configure auto-updater
 autoUpdater.autoDownload = false // Don't download automatically, let user decide
@@ -287,20 +292,82 @@ ipcMain.handle('backgrounds:import', async () => {
   ensureBackgroundsDir()
   console.log('[backgrounds:import] destination dir:', backgroundsDir)
   const imported: string[] = []
+  
   for (const filePath of result.filePaths) {
-    const ext = path.extname(filePath)
-    const filename = `${randomUUID()}${ext}`
+    const uuid = randomUUID()
+    const filename = `${uuid}.png` // Use PNG to preserve quality
+    const filenameLower = `${uuid}_lower.png`
     const destPath = path.join(backgroundsDir, filename)
+    const destPathLower = path.join(backgroundsDir, filenameLower)
+    
     try {
-      fs.copyFileSync(filePath, destPath)
-      if (fs.existsSync(destPath)) {
-        imported.push(filename)
-        console.log('[backgrounds:import] copied:', path.basename(filePath), '->', filename)
+      // Load image using nativeImage
+      const img = nativeImage.createFromPath(filePath)
+      if (img.isEmpty()) {
+        console.error('[backgrounds:import] failed to load:', filePath)
+        continue
+      }
+      
+      const srcSize = img.getSize()
+      const aspectRatio = srcSize.width / srcSize.height
+      console.log('[backgrounds:import] source:', path.basename(filePath), `${srcSize.width}x${srcSize.height}`, `aspect: ${aspectRatio.toFixed(2)}`)
+      
+      // Detect if this is a lower-third sized image (wide banner, height < 500px or aspect ratio > 4:1)
+      const isLowerThirdSized = srcSize.height < 500 || aspectRatio > 4
+      
+      if (isLowerThirdSized) {
+        // This is already a lower-third/banner image - resize directly to both sizes
+        console.log('[backgrounds:import] detected lower-third sized image')
+        
+        // For full size: scale to fit width, center vertically on black background
+        // Create a 1920x1080 canvas with the banner centered at bottom
+        const scaledBanner = img.resize({ 
+          width: BG_WIDTH_FULL, 
+          height: BG_HEIGHT_LOWER_THIRD,
+          quality: 'best'
+        })
+        
+        // For full-size version, we'll just use the scaled banner (user sees it in settings)
+        // The NDI full mode isn't commonly used with lower-third banners anyway
+        fs.writeFileSync(destPath, scaledBanner.toPNG())
+        
+        // For lower-third: resize to exactly 1920x360
+        const lowerImg = img.resize({ 
+          width: BG_WIDTH_FULL, 
+          height: BG_HEIGHT_LOWER_THIRD,
+          quality: 'best'
+        })
+        fs.writeFileSync(destPathLower, lowerImg.toPNG())
+        
       } else {
-        console.error('[backgrounds:import] copy reported success but file missing:', destPath)
+        // This is a full-size image - use crop logic
+        
+        // Resize to full size (1920x1080)
+        const fullImg = img.resize({ 
+          width: BG_WIDTH_FULL, 
+          height: BG_HEIGHT_FULL,
+          quality: 'best'
+        })
+        fs.writeFileSync(destPath, fullImg.toPNG())
+        
+        // For lower-third: crop from the bottom of the full-size image
+        const lowerImg = fullImg.crop({
+          x: 0,
+          y: BG_HEIGHT_FULL - BG_HEIGHT_LOWER_THIRD, // Start 720px from top (bottom 360px)
+          width: BG_WIDTH_FULL,
+          height: BG_HEIGHT_LOWER_THIRD
+        })
+        fs.writeFileSync(destPathLower, lowerImg.toPNG())
+      }
+      
+      if (fs.existsSync(destPath) && fs.existsSync(destPathLower)) {
+        imported.push(filename)
+        console.log('[backgrounds:import] created:', filename, 'and', filenameLower)
+      } else {
+        console.error('[backgrounds:import] processing succeeded but file(s) missing')
       }
     } catch (err) {
-      console.error('[backgrounds:import] copy failed:', filePath, '->', destPath, err)
+      console.error('[backgrounds:import] processing failed:', filePath, err)
     }
   }
   return imported
@@ -309,8 +376,20 @@ ipcMain.handle('backgrounds:import', async () => {
 ipcMain.handle('backgrounds:remove', (_event, filename: string) => {
   const safeName = path.basename(filename)
   const filePath = path.join(backgroundsDir, safeName)
+  
+  // Also remove the lower-third version if it exists
+  const baseName = safeName.replace(/\.(jpg|jpeg|png|webp)$/i, '')
+  const lowerPathPng = path.join(backgroundsDir, `${baseName}_lower.png`)
+  const lowerPathJpg = path.join(backgroundsDir, `${baseName}_lower.jpg`)
+  
   if (fs.existsSync(filePath)) {
     fs.unlinkSync(filePath)
+  }
+  if (fs.existsSync(lowerPathPng)) {
+    fs.unlinkSync(lowerPathPng)
+  }
+  if (fs.existsSync(lowerPathJpg)) {
+    fs.unlinkSync(lowerPathJpg)
   }
   return true
 })

@@ -52,12 +52,14 @@ export default function Settings() {
     shadowOffsetX,
     shadowOffsetY,
     shadowColor,
+    lowerThirdOpacity,
     setDisplayId,
     setTextPosition,
     setShadowBlur,
     setShadowOffsetX,
     setShadowOffsetY,
     setShadowColor,
+    setLowerThirdOpacity,
     setFontSize,
     setFontFamily,
     setFontWeight,
@@ -728,6 +730,9 @@ export default function Settings() {
                   style={inputStyle}
                 >
                   <option value="inherit">System Default</option>
+                  <option value="'Poppins', sans-serif">Poppins</option>
+                  <option value="'Roboto', sans-serif">Roboto</option>
+                  <option value="'Montserrat', sans-serif">Montserrat</option>
                   <option value="'Georgia', serif">Georgia</option>
                   <option value="'Times New Roman', serif">Times New Roman</option>
                   <option value="'Arial', sans-serif">Arial</option>
@@ -879,6 +884,37 @@ export default function Settings() {
                   />
                 </div>
               </div>
+
+              {/* Lower Third Opacity - only show when lower-third mode is selected */}
+              {textPosition === 'lower-third' && (
+                <div>
+                  <label style={labelStyle}>Lower Third Background Opacity: {Math.round(lowerThirdOpacity * 100)}%</label>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="5"
+                    value={Math.round(lowerThirdOpacity * 100)}
+                    onChange={(e) => setLowerThirdOpacity(Number(e.target.value) / 100)}
+                    style={{ 
+                      width: '100%', 
+                      accentColor: '#e94560',
+                      height: '8px',
+                      borderRadius: '4px',
+                    }}
+                  />
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    fontSize: '11px', 
+                    color: 'rgba(160,174,192,0.5)',
+                    marginTop: '8px'
+                  }}>
+                    <span>0% (transparent)</span>
+                    <span>100% (solid)</span>
+                  </div>
+                </div>
+              )}
 
               {/* Font preview */}
               <div style={{

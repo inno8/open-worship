@@ -1,4 +1,4 @@
-type View = 'library' | 'schedule' | 'presenter' | 'settings'
+type View = 'library' | 'schedule' | 'presenter' | 'announcements' | 'settings'
 
 interface SidebarProps {
   currentView: string
@@ -39,6 +39,18 @@ const menuItems: { id: View; label: string; icon: React.ReactNode }[] = [
         <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
         <line x1="8" y1="21" x2="16" y2="21" />
         <line x1="12" y1="17" x2="12" y2="21" />
+      </svg>
+    ),
+  },
+  {
+    id: 'announcements',
+    label: 'Announcements',
+    icon: (
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M19 4v6a2 2 0 01-2 2H7l-4 4V6a2 2 0 012-2h12a2 2 0 012 2z" />
+        <line x1="12" y1="8" x2="12" y2="8.01" />
+        <line x1="8" y1="8" x2="8" y2="8.01" />
+        <line x1="16" y1="8" x2="16" y2="8.01" />
       </svg>
     ),
   },

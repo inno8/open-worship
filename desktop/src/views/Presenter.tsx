@@ -28,6 +28,7 @@ export default function Presenter() {
     shadowOffsetX,
     shadowOffsetY,
     shadowColor,
+    lowerThirdOpacity,
   } = usePresentationStore()
 
   const { activeSchedule, addItem, setSchedules, setActiveSchedule, schedules } = useScheduleStore()
@@ -110,7 +111,8 @@ export default function Presenter() {
         shadowBlur, 
         shadowOffsetX, 
         shadowOffsetY, 
-        shadowColor, 
+        shadowColor,
+        lowerThirdOpacity,
         ...bgStyle 
       }
       setCurrentSlide(updatedSlide)
@@ -118,7 +120,7 @@ export default function Presenter() {
         window.electronAPI.updatePresentation(updatedSlide)
       }
     }
-  }, [fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, defaultBackground])
+  }, [fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity, defaultBackground])
   
   // Sync apiSchedules with cache when they change
   useEffect(() => {
@@ -438,7 +440,7 @@ export default function Presenter() {
 
       if (previewSlide) {
         const bgStyle = getBackgroundStyle(effectiveBg)
-        const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, ...bgStyle }
+        const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity, ...bgStyle }
         setCurrentSlide(slideWithBg)
         if (window.electronAPI) {
           window.electronAPI.updatePresentation(slideWithBg)
@@ -456,7 +458,7 @@ export default function Presenter() {
   function handlePushToLive() {
     if (previewSlide) {
       const bgStyle = getBackgroundStyle(effectiveBg)
-      const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, ...bgStyle }
+      const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity, ...bgStyle }
       setCurrentSlide(slideWithBg)
       if (window.electronAPI) {
         window.electronAPI.updatePresentation(slideWithBg)
@@ -743,7 +745,12 @@ export default function Presenter() {
                         </div>
                         {schedule.date && (
                           <div style={{ fontSize: '11px', color: '#a0aec0' }}>
-                            {schedule.date}
+                            {new Date(schedule.date + 'T00:00:00').toLocaleDateString('en-US', { 
+                              weekday: 'short', 
+                              month: 'short', 
+                              day: 'numeric',
+                              year: schedule.date.slice(0, 4) !== new Date().getFullYear().toString() ? 'numeric' : undefined
+                            })}
                           </div>
                         )}
                       </div>
