@@ -76,6 +76,15 @@ declare global {
         reorder: (scheduleId: string, itemIds: string[]) => Promise<boolean>
       }
 
+      // Announcements
+      announcements: {
+        getAll: () => Promise<Array<{ id: string; type: string; name: string; content: string | null; filePath: string | null; formatting: string; createdAt: string; updatedAt: string }>>
+        getByType: (type: string) => Promise<Array<{ id: string; type: string; name: string; content: string | null; filePath: string | null; formatting: string; createdAt: string; updatedAt: string }>>
+        create: (announcement: { id: string; type: string; name: string; content: string | null; filePath: string | null; formatting: string; createdAt: string; updatedAt: string }) => Promise<unknown>
+        update: (id: string, updates: Record<string, unknown>) => Promise<unknown>
+        delete: (id: string) => Promise<boolean>
+      }
+
       // Backgrounds
       backgrounds: {
         list: () => Promise<string[]>

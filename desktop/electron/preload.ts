@@ -80,6 +80,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
     reorder: (scheduleId: string, itemIds: string[]) => ipcRenderer.invoke('scheduleItems:reorder', scheduleId, itemIds),
   },
 
+  // ============ ANNOUNCEMENTS ============
+  announcements: {
+    getAll: () => ipcRenderer.invoke('announcements:getAll'),
+    getByType: (type: string) => ipcRenderer.invoke('announcements:getByType', type),
+    create: (announcement: { id: string; type: string; name: string; content: string | null; filePath: string | null; formatting: string; createdAt: string; updatedAt: string }) => ipcRenderer.invoke('announcements:create', announcement),
+    update: (id: string, updates: Record<string, unknown>) => ipcRenderer.invoke('announcements:update', id, updates),
+    delete: (id: string) => ipcRenderer.invoke('announcements:delete', id),
+  },
+
   // ============ BACKGROUNDS ============
   backgrounds: {
     list: () => ipcRenderer.invoke('backgrounds:list') as Promise<string[]>,

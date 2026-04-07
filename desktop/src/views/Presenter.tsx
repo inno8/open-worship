@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef as useReactRef } from 'react'
 import { usePresentationStore, getBackgroundStyle } from '../stores/presentationStore'
 import { useScheduleStore, ScheduleItem, Schedule } from '../stores/scheduleStore'
 import { useSongStore, parseLyrics, Section, Song } from '../stores/songStore'
@@ -29,10 +29,12 @@ export default function Presenter() {
     shadowOffsetY,
     shadowColor,
     lowerThirdOpacity,
+    textBorderWidth,
+    textBorderColor,
   } = usePresentationStore()
 
   const { activeSchedule, addItem, setSchedules, setActiveSchedule, schedules } = useScheduleStore()
-  const { songs, addSong, reloadSongs } = useSongStore()
+  const { songs, addSong, reloadSongs, updateSong } = useSongStore()
   const { apiToken, apiBaseUrl } = useSyncStore()
 
   const [activeTab, setActiveTab] = useState<'schedule' | 'songs'>('schedule')
@@ -42,6 +44,16 @@ export default function Presenter() {
   const [selectedVerseIndex, setSelectedVerseIndex] = useState<number>(0)
   const [previewSlide, setPreviewSlide] = useState<{ text: string; sectionType: string } | null>(null)
   const [toast, setToast] = useState<string | null>(null)
+
+  // Edit song modal state
+  const [editingSong, setEditingSong] = useState<Song | null>(null)
+  const [editSongTitle, setEditSongTitle] = useState('')
+  const [editSongAuthor, setEditSongAuthor] = useState('')
+  const [editSongLyrics, setEditSongLyrics] = useState('')
+
+  // Edit verse modal state
+  const [editingVerseIndex, setEditingVerseIndex] = useState<number | null>(null)
+  const [editVerseText, setEditVerseText] = useState('')
   const [slideOverrideBg, setSlideOverrideBg] = useState<string | null>(null)
   const [showBgPicker, setShowBgPicker] = useState(false)
   const [isSyncingSchedules, setIsSyncingSchedules] = useState(false)
@@ -95,6 +107,22 @@ export default function Presenter() {
     showToast('Schedule cleared')
   }
 
+  // Track output panel width to switch between row/column layout
+  const outputPanelRef = useReactRef<HTMLDivElement>(null)
+  const [outputsStacked, setOutputsStacked] = useState(false)
+
+  useEffect(() => {
+    const el = outputPanelRef.current
+    if (!el) return
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setOutputsStacked(entry.contentRect.width < 500)
+      }
+    })
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
   useEffect(() => { loadBackgrounds() }, [])
   
   // Re-send current slide when appearance settings change (so Settings changes apply immediately)
@@ -113,14 +141,16 @@ export default function Presenter() {
         shadowOffsetY, 
         shadowColor,
         lowerThirdOpacity,
-        ...bgStyle 
+        textBorderWidth,
+        textBorderColor,
+        ...bgStyle
       }
       setCurrentSlide(updatedSlide)
       if (window.electronAPI) {
         window.electronAPI.updatePresentation(updatedSlide)
       }
     }
-  }, [fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity, defaultBackground])
+  }, [fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity, textBorderWidth, textBorderColor, defaultBackground])
   
   // Sync apiSchedules with cache when they change
   useEffect(() => {
@@ -131,6 +161,74 @@ export default function Presenter() {
     setToast(message)
     setTimeout(() => setToast(null), 3000)
   }, [])
+
+  // Open song edit modal
+  function handleEditSong(song: Song) {
+    setEditingSong(song)
+    setEditSongTitle(song.title)
+    setEditSongAuthor(song.author)
+    setEditSongLyrics(song.lyrics)
+  }
+
+  // Save song edits
+  async function handleSaveSongEdit() {
+    if (!editingSong) return
+    await updateSong(editingSong.id, {
+      title: editSongTitle,
+      author: editSongAuthor,
+      lyrics: editSongLyrics,
+    })
+    setEditingSong(null)
+    showToast('Song updated')
+  }
+
+  // Open verse edit modal
+  function handleEditVerse(verseIdx: number) {
+    const song = getCurrentSong()
+    if (!song) return
+    const sections = parseLyrics(song.lyrics)
+    if (verseIdx < 0 || verseIdx >= sections.length) return
+    setEditingVerseIndex(verseIdx)
+    setEditVerseText(sections[verseIdx].lines.join('\n'))
+  }
+
+  // Save verse edit — updates just that section in the full lyrics
+  async function handleSaveVerseEdit() {
+    const song = getCurrentSong()
+    if (!song || editingVerseIndex === null) return
+
+    // Re-parse from original lyrics to find section boundaries
+    const lines = song.lyrics.split('\n')
+    const sectionStarts: { headerLine: number; contentStart: number; type: string }[] = []
+    let implicitStart = true
+
+    for (let i = 0; i < lines.length; i++) {
+      const match = lines[i].trim().match(/^\[(.+?)\]$/)
+      if (match) {
+        sectionStarts.push({ headerLine: i, contentStart: i + 1, type: match[1] })
+        implicitStart = false
+      } else if (implicitStart && lines[i].trim()) {
+        sectionStarts.push({ headerLine: -1, contentStart: 0, type: 'Verse 1' })
+        implicitStart = false
+      }
+    }
+
+    if (editingVerseIndex >= sectionStarts.length) return
+
+    const section = sectionStarts[editingVerseIndex]
+    const nextSection = sectionStarts[editingVerseIndex + 1]
+    const endLine = nextSection ? nextSection.headerLine : lines.length
+
+    // Replace the content lines of this section
+    const newContentLines = editVerseText.split('\n')
+    const before = lines.slice(0, section.contentStart)
+    const after = lines.slice(endLine)
+    const newLyrics = [...before, ...newContentLines, ...after].join('\n')
+
+    await updateSong(song.id, { lyrics: newLyrics })
+    setEditingVerseIndex(null)
+    showToast('Verse updated')
+  }
 
   // Sync schedules from external API
   async function handleSyncSchedules() {
@@ -224,13 +322,21 @@ export default function Presenter() {
   const apiScheduleItems = selectedApiSchedule?.items ?? []
   const displayItems = [...apiScheduleItems, ...sessionItems]
 
-  // Filter songs by search
-  const filteredSongs = songs.filter(song => {
+  // Filter songs by search — prioritize title, then author/tags, then lyrics
+  const filteredSongs = (() => {
     const q = songSearch.toLowerCase()
-    return song.title.toLowerCase().includes(q) || 
-           song.author.toLowerCase().includes(q) ||
-           song.lyrics.toLowerCase().includes(q)
-  })
+    if (!q) return songs
+
+    const scored: { song: typeof songs[0]; score: number }[] = []
+    for (const song of songs) {
+      let score = 0
+      if (song.title.toLowerCase().includes(q)) score = 3
+      else if (song.author.toLowerCase().includes(q) || song.tags.some((t: string) => t.toLowerCase().includes(q))) score = 2
+      else if (song.lyrics.toLowerCase().includes(q)) score = 1
+      if (score > 0) scored.push({ song, score })
+    }
+    return scored.sort((a, b) => b.score - a.score).map(s => s.song)
+  })()
 
   // Get the selected schedule item or direct song
   // Check API schedule items, session items, and local schedule items
@@ -275,7 +381,14 @@ export default function Presenter() {
   }
   
   const scheduleItemSong = getScheduleItemSong()
-  
+
+  // Get the current song being worked with (from song list or schedule item)
+  const getCurrentSong = (): Song | null => {
+    if (activeTab === 'songs' && selectedSong) return selectedSong
+    if (activeTab === 'schedule') return getScheduleItemSong()
+    return null
+  }
+
   // Parse verses - from schedule item or direct song
   const verses: Section[] = activeTab === 'schedule' && selectedItem?.type === 'song' && scheduleItemSong
     ? parseLyrics(scheduleItemSong.lyrics || '')
@@ -393,6 +506,13 @@ export default function Presenter() {
         fontFamily,
         fontWeight,
         textColor,
+        shadowBlur,
+        shadowOffsetX,
+        shadowOffsetY,
+        shadowColor,
+        lowerThirdOpacity,
+        textBorderWidth,
+        textBorderColor,
         ...bgStyle,
       }
       setPreviewSlide(slide)
@@ -440,7 +560,7 @@ export default function Presenter() {
 
       if (previewSlide) {
         const bgStyle = getBackgroundStyle(effectiveBg)
-        const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity, ...bgStyle }
+        const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity, textBorderWidth, textBorderColor, ...bgStyle }
         setCurrentSlide(slideWithBg)
         if (window.electronAPI) {
           window.electronAPI.updatePresentation(slideWithBg)
@@ -458,7 +578,7 @@ export default function Presenter() {
   function handlePushToLive() {
     if (previewSlide) {
       const bgStyle = getBackgroundStyle(effectiveBg)
-      const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity, ...bgStyle }
+      const slideWithBg = { ...previewSlide, fontSize, fontFamily, fontWeight, textColor, shadowBlur, shadowOffsetX, shadowOffsetY, shadowColor, lowerThirdOpacity, textBorderWidth, textBorderColor, ...bgStyle }
       setCurrentSlide(slideWithBg)
       if (window.electronAPI) {
         window.electronAPI.updatePresentation(slideWithBg)
@@ -1077,21 +1197,43 @@ export default function Presenter() {
                           {song.author}
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleAddSongToSchedule(song) }}
-                        title="Add to schedule"
-                        style={{
-                          padding: '4px 8px',
-                          borderRadius: '6px',
-                          backgroundColor: 'rgba(255,255,255,0.05)',
-                          color: '#a0aec0',
-                          border: 'none',
-                          cursor: 'pointer',
-                          fontSize: '11px',
-                        }}
-                      >
-                        +
-                      </button>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleEditSong(song) }}
+                          title="Edit song"
+                          style={{
+                            padding: '4px 6px',
+                            borderRadius: '6px',
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            color: '#a0aec0',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                            display: 'flex',
+                            alignItems: 'center',
+                          }}
+                        >
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                            <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleAddSongToSchedule(song) }}
+                          title="Add to schedule"
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '6px',
+                            backgroundColor: 'rgba(255,255,255,0.05)',
+                            color: '#a0aec0',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '11px',
+                          }}
+                        >
+                          +
+                        </button>
+                      </div>
                     </div>
                   ))
                 )}
@@ -1109,13 +1251,37 @@ export default function Presenter() {
           backgroundColor: '#16213e',
           borderRight: '1px solid rgba(255,255,255,0.08)',
         }}>
-          <div style={{ 
-            padding: '12px 16px', 
+          <div style={{
+            padding: '12px 16px',
             borderBottom: '1px solid rgba(255,255,255,0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
           }}>
             <span style={{ fontSize: '13px', fontWeight: 700, color: '#ffffff' }}>
               {currentTitle}
             </span>
+            {getCurrentSong() && (
+              <button
+                onClick={() => handleEditSong(getCurrentSong()!)}
+                title="Edit song"
+                style={{
+                  padding: '4px 6px',
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: '#a0aec0',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                  <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                </svg>
+              </button>
+            )}
           </div>
           <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
             {verses.length === 0 ? (
@@ -1141,15 +1307,42 @@ export default function Presenter() {
                       : '1px solid transparent',
                   }}
                 >
-                  <div style={{ 
-                    fontSize: '10px', 
-                    fontWeight: 700, 
-                    color: '#e94560', 
+                  <div style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
                     marginBottom: '6px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.05em',
                   }}>
-                    {verse.type}
+                    <span style={{
+                      fontSize: '10px',
+                      fontWeight: 700,
+                      color: '#e94560',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                    }}>
+                      {verse.type}
+                    </span>
+                    {getCurrentSong() && (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleEditVerse(idx) }}
+                        title="Edit verse"
+                        style={{
+                          padding: '2px 5px',
+                          borderRadius: '4px',
+                          backgroundColor: 'rgba(255,255,255,0.05)',
+                          color: '#a0aec0',
+                          border: 'none',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" />
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" />
+                        </svg>
+                      </button>
+                    )}
                   </div>
                   <div style={{ fontSize: '12px', color: '#ffffff', lineHeight: 1.5 }}>
                     {verse.lines.slice(0, 3).map((line, i) => (
@@ -1174,13 +1367,16 @@ export default function Presenter() {
         </div>
 
         {/* Preview and Live Outputs */}
-        <div style={{ 
-          flex: 1,
-          display: 'flex',
-          flexDirection: 'column',
-          minWidth: '200px',
-        }}>
-          <div style={{ flex: 1, display: 'flex', minHeight: 0 }}>
+        <div
+          ref={outputPanelRef}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            minWidth: '200px',
+          }}
+        >
+          <div style={{ flex: 1, display: 'flex', flexDirection: outputsStacked ? 'column' : 'row', minHeight: 0 }}>
             {/* Preview Output */}
             <div style={{ 
               flex: 1, 
@@ -1257,14 +1453,16 @@ export default function Presenter() {
                     }}>
                       {previewSlide.sectionType}
                     </div>
-                    <p style={{ 
-                      color: textColor, 
+                    <p style={{
+                      color: textColor,
                       fontSize: `calc(${fontSize} * 0.25)`,
                       fontFamily: fontFamily,
                       fontWeight,
                       lineHeight: 1.6,
                       margin: 0,
                       textShadow: '1px 1px 4px rgba(0,0,0,0.8)',
+                      WebkitTextStroke: textBorderWidth > 0 ? `${Math.max(1, textBorderWidth * 0.25)}px ${textBorderColor}` : undefined,
+                      paintOrder: textBorderWidth > 0 ? 'stroke fill' : undefined,
                       whiteSpace: 'pre-line',
                     }}>
                       {previewSlide.text}
@@ -1326,14 +1524,16 @@ export default function Presenter() {
                     }}>
                       {currentSlide.sectionType}
                     </div>
-                    <p style={{ 
-                      color: currentSlide.textColor ?? textColor, 
+                    <p style={{
+                      color: currentSlide.textColor ?? textColor,
                       fontSize: `calc(${fontSize} * 0.25)`,
                       fontFamily: fontFamily,
                       fontWeight: currentSlide.fontWeight ?? fontWeight,
                       lineHeight: 1.6,
                       margin: 0,
                       textShadow: '1px 1px 4px rgba(0,0,0,0.8)',
+                      WebkitTextStroke: textBorderWidth > 0 ? `${Math.max(1, textBorderWidth * 0.25)}px ${textBorderColor}` : undefined,
+                      paintOrder: textBorderWidth > 0 ? 'stroke fill' : undefined,
                       whiteSpace: 'pre-line',
                     }}>
                       {currentSlide.text}
@@ -1467,6 +1667,162 @@ export default function Presenter() {
                   No backgrounds. Add them in Settings.
                 </p>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Song Modal */}
+      {editingSong && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setEditingSong(null)} />
+          <div style={{
+            position: 'relative',
+            width: '500px',
+            maxHeight: '80vh',
+            backgroundColor: '#1a1a2e',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>Edit Song</span>
+              <button onClick={() => setEditingSong(null)} style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '18px' }}>x</button>
+            </div>
+            <div style={{ padding: '16px 20px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              <div>
+                <label style={{ fontSize: '12px', color: '#a0aec0', display: 'block', marginBottom: '4px' }}>Title</label>
+                <input
+                  value={editSongTitle}
+                  onChange={(e) => setEditSongTitle(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '12px', color: '#a0aec0', display: 'block', marginBottom: '4px' }}>Author</label>
+                <input
+                  value={editSongAuthor}
+                  onChange={(e) => setEditSongAuthor(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff',
+                    fontSize: '13px',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: '12px', color: '#a0aec0', display: 'block', marginBottom: '4px' }}>Lyrics</label>
+                <textarea
+                  value={editSongLyrics}
+                  onChange={(e) => setEditSongLyrics(e.target.value)}
+                  style={{
+                    width: '100%',
+                    minHeight: '250px',
+                    padding: '8px 12px',
+                    borderRadius: '6px',
+                    border: '1px solid rgba(255,255,255,0.1)',
+                    backgroundColor: 'rgba(255,255,255,0.05)',
+                    color: '#ffffff',
+                    fontSize: '13px',
+                    fontFamily: 'monospace',
+                    lineHeight: 1.6,
+                    resize: 'vertical',
+                    outline: 'none',
+                    boxSizing: 'border-box',
+                  }}
+                />
+              </div>
+            </div>
+            <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                onClick={() => setEditingSong(null)}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'transparent', color: '#a0aec0', cursor: 'pointer', fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSongEdit}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', backgroundColor: '#e94560', color: '#ffffff', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Verse Modal */}
+      {editingVerseIndex !== null && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.6)' }} onClick={() => setEditingVerseIndex(null)} />
+          <div style={{
+            position: 'relative',
+            width: '450px',
+            backgroundColor: '#1a1a2e',
+            borderRadius: '12px',
+            border: '1px solid rgba(255,255,255,0.1)',
+            boxShadow: '0 25px 50px rgba(0,0,0,0.5)',
+            display: 'flex',
+            flexDirection: 'column',
+          }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>
+                Edit {verses[editingVerseIndex]?.type || 'Verse'}
+              </span>
+              <button onClick={() => setEditingVerseIndex(null)} style={{ background: 'none', border: 'none', color: '#a0aec0', cursor: 'pointer', fontSize: '18px' }}>x</button>
+            </div>
+            <div style={{ padding: '16px 20px' }}>
+              <textarea
+                value={editVerseText}
+                onChange={(e) => setEditVerseText(e.target.value)}
+                style={{
+                  width: '100%',
+                  minHeight: '180px',
+                  padding: '10px 12px',
+                  borderRadius: '6px',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  backgroundColor: 'rgba(255,255,255,0.05)',
+                  color: '#ffffff',
+                  fontSize: '13px',
+                  fontFamily: 'monospace',
+                  lineHeight: 1.6,
+                  resize: 'vertical',
+                  outline: 'none',
+                  boxSizing: 'border-box',
+                }}
+              />
+            </div>
+            <div style={{ padding: '12px 20px', borderTop: '1px solid rgba(255,255,255,0.08)', display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <button
+                onClick={() => setEditingVerseIndex(null)}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: '1px solid rgba(255,255,255,0.1)', backgroundColor: 'transparent', color: '#a0aec0', cursor: 'pointer', fontSize: '13px' }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveVerseEdit}
+                style={{ padding: '8px 16px', borderRadius: '6px', border: 'none', backgroundColor: '#e94560', color: '#ffffff', cursor: 'pointer', fontSize: '13px', fontWeight: 600 }}
+              >
+                Save
+              </button>
             </div>
           </div>
         </div>

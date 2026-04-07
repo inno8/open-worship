@@ -199,6 +199,14 @@ export class NdiFrameRenderer {
     ctx.shadowOffsetY = slide.shadowOffsetY ?? 2
     ctx.shadowColor = slide.shadowColor ?? 'rgba(0,0,0,0.8)'
 
+    // Text border (stroke)
+    const borderWidth = slide.textBorderWidth ?? 0
+    if (borderWidth > 0) {
+      ctx.strokeStyle = slide.textBorderColor ?? '#000000'
+      ctx.lineWidth = borderWidth * 2 // canvas stroke is centered, so double for visual match
+      ctx.lineJoin = 'round'
+    }
+
     const lines = slide.text.split('\n').filter(l => l.trim())
     const lineHeight = fontSize * 1.4
     const totalHeight = lines.length * lineHeight
@@ -212,7 +220,7 @@ export class NdiFrameRenderer {
 
     for (let i = 0; i < lines.length; i++) {
       const y = startY + i * lineHeight
-      this.drawWrappedLine(lines[i], width / 2, y, width * 0.9, fontSize)
+      this.drawWrappedLine(lines[i], width / 2, y, width * 0.9, fontSize, borderWidth > 0)
     }
 
     ctx.shadowColor = 'transparent'
@@ -224,11 +232,12 @@ export class NdiFrameRenderer {
     return this.cachedFrame
   }
 
-  private drawWrappedLine(text: string, x: number, y: number, maxWidth: number, fontSize: number): void {
+  private drawWrappedLine(text: string, x: number, y: number, maxWidth: number, fontSize: number, stroke = false): void {
     const { ctx } = this
     const measured = ctx.measureText(text)
 
     if (measured.width <= maxWidth) {
+      if (stroke) ctx.strokeText(text, x, y)
       ctx.fillText(text, x, y)
       return
     }
@@ -252,6 +261,7 @@ export class NdiFrameRenderer {
     const offsetY = -((wrappedLines.length - 1) * lineHeight) / 2
 
     for (let i = 0; i < wrappedLines.length; i++) {
+      if (stroke) ctx.strokeText(wrappedLines[i], x, y + offsetY + i * lineHeight)
       ctx.fillText(wrappedLines[i], x, y + offsetY + i * lineHeight)
     }
   }

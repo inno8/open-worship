@@ -62,6 +62,17 @@ function initDatabase() {
 
     CREATE INDEX IF NOT EXISTS idx_schedule_items_schedule ON schedule_items(scheduleId);
     CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
+
+    CREATE TABLE IF NOT EXISTS announcements (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL CHECK (type IN ('image', 'text', 'video')),
+      name TEXT NOT NULL,
+      content TEXT,
+      filePath TEXT,
+      formatting TEXT DEFAULT '{}',
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
   `);
   const columns = db.prepare("PRAGMA table_info(songs)").all();
   if (!columns.some((c) => c.name === "defaultBackground")) {
@@ -185,6 +196,39 @@ function reorderScheduleItems(scheduleId, itemIds) {
     });
   });
   transaction();
+}
+function getAllAnnouncements() {
+  if (!db) return [];
+  return db.prepare("SELECT * FROM announcements ORDER BY updatedAt DESC").all();
+}
+function getAnnouncementsByType(type2) {
+  if (!db) return [];
+  return db.prepare("SELECT * FROM announcements WHERE type = ? ORDER BY updatedAt DESC").all(type2);
+}
+function createAnnouncement(announcement) {
+  if (!db) throw new Error("Database not initialized");
+  const stmt = db.prepare(`
+    INSERT INTO announcements (id, type, name, content, filePath, formatting, createdAt, updatedAt)
+    VALUES (@id, @type, @name, @content, @filePath, @formatting, @createdAt, @updatedAt)
+  `);
+  stmt.run(announcement);
+  return announcement;
+}
+function updateAnnouncement(id, updates) {
+  if (!db) return void 0;
+  const existing = db.prepare("SELECT * FROM announcements WHERE id = ?").get(id);
+  if (!existing) return void 0;
+  const updated = { ...existing, ...updates, updatedAt: (/* @__PURE__ */ new Date()).toISOString() };
+  db.prepare(`
+    UPDATE announcements
+    SET type = @type, name = @name, content = @content, filePath = @filePath, formatting = @formatting, updatedAt = @updatedAt
+    WHERE id = @id
+  `).run(updated);
+  return updated;
+}
+function deleteAnnouncement(id) {
+  if (!db) return false;
+  return db.prepare("DELETE FROM announcements WHERE id = ?").run(id).changes > 0;
 }
 function findNdiDll() {
   const possiblePaths = [
@@ -16018,6 +16062,21 @@ function ensureBackgroundsDir() {
     fs$1.mkdirSync(backgroundsDir, { recursive: true });
   }
 }
+require$$1.ipcMain.handle("announcements:getAll", () => {
+  return getAllAnnouncements();
+});
+require$$1.ipcMain.handle("announcements:getByType", (_event, type2) => {
+  return getAnnouncementsByType(type2);
+});
+require$$1.ipcMain.handle("announcements:create", (_event, announcement) => {
+  return createAnnouncement(announcement);
+});
+require$$1.ipcMain.handle("announcements:update", (_event, id, updates) => {
+  return updateAnnouncement(id, updates);
+});
+require$$1.ipcMain.handle("announcements:delete", (_event, id) => {
+  return deleteAnnouncement(id);
+});
 require$$1.ipcMain.handle("backgrounds:list", () => {
   ensureBackgroundsDir();
   return fs$1.readdirSync(backgroundsDir).filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f));

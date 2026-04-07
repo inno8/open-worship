@@ -222,15 +222,21 @@ export default function Library() {
     setIsSyncing(false)
   }
 
-  const filteredSongs = songs.filter((song) => {
+  const filteredSongs = (() => {
     const q = searchQuery.toLowerCase()
-    return (
-      song.title.toLowerCase().includes(q) ||
-      song.author.toLowerCase().includes(q) ||
-      song.lyrics.toLowerCase().includes(q) ||
-      song.tags.some((t) => t.toLowerCase().includes(q))
-    )
-  })
+    if (!q) return songs
+
+    // Score songs: title match = 3, author/tag match = 2, lyrics match = 1
+    const scored: { song: typeof songs[0]; score: number }[] = []
+    for (const song of songs) {
+      let score = 0
+      if (song.title.toLowerCase().includes(q)) score = 3
+      else if (song.author.toLowerCase().includes(q) || song.tags.some((t) => t.toLowerCase().includes(q))) score = 2
+      else if (song.lyrics.toLowerCase().includes(q)) score = 1
+      if (score > 0) scored.push({ song, score })
+    }
+    return scored.sort((a, b) => b.score - a.score).map(s => s.song)
+  })()
 
   const sections = selectedSong ? parseLyrics(selectedSong.lyrics) : []
 
@@ -980,21 +986,6 @@ export default function Library() {
                     }}
                   >
                     Delete
-                  </button>
-                  <button
-                    onClick={handleAddToSchedule}
-                    style={{
-                      padding: '14px 24px',
-                      borderRadius: '12px',
-                      backgroundColor: '#e94560',
-                      color: '#ffffff',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                      border: 'none',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    Add to Schedule
                   </button>
                 </div>
               </div>

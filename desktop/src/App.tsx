@@ -225,6 +225,8 @@ function PresentationWindow() {
             fontFamily: slideData.fontFamily || 'inherit',
             fontWeight: slideData.fontWeight ?? 400,
             textShadow: `${slideData.shadowOffsetX ?? 2}px ${slideData.shadowOffsetY ?? 2}px ${slideData.shadowBlur ?? 8}px ${slideData.shadowColor ?? 'rgba(0,0,0,0.8)'}`,
+            WebkitTextStroke: (slideData.textBorderWidth ?? 0) > 0 ? `${slideData.textBorderWidth}px ${slideData.textBorderColor ?? '#000000'}` : undefined,
+            paintOrder: (slideData.textBorderWidth ?? 0) > 0 ? 'stroke fill' : undefined,
             margin: 0,
             wordWrap: 'break-word',
             overflowWrap: 'break-word',

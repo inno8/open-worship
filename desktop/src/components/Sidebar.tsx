@@ -1,3 +1,5 @@
+import { useState } from 'react'
+
 type View = 'library' | 'schedule' | 'presenter' | 'announcements' | 'settings'
 
 interface SidebarProps {
@@ -17,20 +19,6 @@ const menuItems: { id: View; label: string; icon: React.ReactNode }[] = [
       </svg>
     ),
   },
-  // {
-  //   id: 'schedule',
-  //   label: 'Schedule',
-  //   icon: (
-  //     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-  //       <line x1="8" y1="6" x2="21" y2="6" />
-  //       <line x1="8" y1="12" x2="21" y2="12" />
-  //       <line x1="8" y1="18" x2="21" y2="18" />
-  //       <line x1="3" y1="6" x2="3.01" y2="6" />
-  //       <line x1="3" y1="12" x2="3.01" y2="12" />
-  //       <line x1="3" y1="18" x2="3.01" y2="18" />
-  //     </svg>
-  //   ),
-  // },
   {
     id: 'presenter',
     label: 'Present',
@@ -44,7 +32,7 @@ const menuItems: { id: View; label: string; icon: React.ReactNode }[] = [
   },
   {
     id: 'announcements',
-    label: 'Announcements',
+    label: 'Announce',
     icon: (
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M19 4v6a2 2 0 01-2 2H7l-4 4V6a2 2 0 012-2h12a2 2 0 012 2z" />
@@ -66,47 +54,78 @@ const menuItems: { id: View; label: string; icon: React.ReactNode }[] = [
   },
 ]
 
+const COLLAPSED_WIDTH = 60
+const EXPANDED_WIDTH = 200
+
 export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
+  const [hovered, setHovered] = useState(false)
+  const expanded = hovered
+
   return (
-    <aside 
-      className="flex flex-col h-full"
-      style={{ 
-        width: 260, 
-        minWidth: 260, 
+    <aside
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        width: expanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH,
+        minWidth: expanded ? EXPANDED_WIDTH : COLLAPSED_WIDTH,
         backgroundColor: '#16213e',
-        borderRight: '1px solid rgba(255,255,255,0.08)'
+        borderRight: '1px solid rgba(255,255,255,0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        height: '100%',
+        transition: 'width 0.2s ease, min-width 0.2s ease',
+        overflow: 'hidden',
+        position: 'relative',
+        zIndex: 20,
       }}
     >
       {/* Logo */}
-      <div className="px-6 py-6" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-        <h1 className="text-xl font-bold text-white flex items-center gap-3">
-          <img 
-            src="./assets/icons/icon.svg" 
-            alt="Open Worship" 
-            style={{ width: 40, height: 40 }}
-          />
-          <span>Open Worship</span>
-        </h1>
+      <div style={{
+        padding: expanded ? '16px 16px' : '16px 0',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: expanded ? 'flex-start' : 'center',
+        gap: '10px',
+        minHeight: '56px',
+      }}>
+        <img
+          src="./assets/icons/icon.svg"
+          alt="Open Worship"
+          style={{ width: 28, height: 28, flexShrink: 0 }}
+        />
+        {expanded && (
+          <span style={{
+            color: '#ffffff',
+            fontWeight: 700,
+            fontSize: '14px',
+            whiteSpace: 'nowrap',
+          }}>
+            Open Worship
+          </span>
+        )}
       </div>
 
       {/* Navigation */}
-      <nav style={{ flex: 1, padding: '32px 20px' }}>
-        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <nav style={{ flex: 1, padding: '16px 8px' }}>
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '6px' }}>
           {menuItems.map((item) => (
             <li key={item.id}>
               <button
                 onClick={() => onViewChange(item.id)}
+                title={expanded ? undefined : item.label}
                 style={{
                   width: '100%',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '16px',
-                  padding: '16px 20px',
-                  borderRadius: '14px',
+                  gap: '12px',
+                  padding: expanded ? '10px 14px' : '10px 0',
+                  justifyContent: expanded ? 'flex-start' : 'center',
+                  borderRadius: '10px',
                   border: 'none',
                   textAlign: 'left',
                   cursor: 'pointer',
-                  transition: 'all 0.2s',
+                  transition: 'background-color 0.15s, color 0.15s',
                   backgroundColor: currentView === item.id ? '#e94560' : 'transparent',
                   color: currentView === item.id ? '#ffffff' : '#a0aec0',
                 }}
@@ -123,18 +142,17 @@ export default function Sidebar({ currentView, onViewChange }: SidebarProps) {
                   }
                 }}
               >
-                {item.icon}
-                <span style={{ fontWeight: 600, fontSize: '15px' }}>{item.label}</span>
+                <span style={{ flexShrink: 0, display: 'flex' }}>{item.icon}</span>
+                {expanded && (
+                  <span style={{ fontWeight: 600, fontSize: '13px', whiteSpace: 'nowrap' }}>
+                    {item.label}
+                  </span>
+                )}
               </button>
             </li>
           ))}
         </ul>
       </nav>
-
-      {/* Footer */}
-      <div className="px-6 py-5" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
-        <p className="text-xs text-[#a0aec0]/50 text-center font-medium">v1.0.0</p>
-      </div>
     </aside>
   )
 }

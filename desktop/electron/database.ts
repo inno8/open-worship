@@ -25,6 +25,17 @@ export interface Schedule {
   updatedAt: string
 }
 
+export interface Announcement {
+  id: string
+  type: 'image' | 'text' | 'video'  // image = lower-third images, video = full-screen videos, text = text announcements
+  name: string
+  content: string | null        // text content for text announcements
+  filePath: string | null       // data URL for images/videos, or background image for text
+  formatting: string            // JSON: { bold, italic, underline, fontSize, textAlign, textColor, displayMode }
+  createdAt: string
+  updatedAt: string
+}
+
 export interface ScheduleItem {
   id: string
   scheduleId: string
@@ -82,6 +93,17 @@ export function initDatabase(): void {
 
     CREATE INDEX IF NOT EXISTS idx_schedule_items_schedule ON schedule_items(scheduleId);
     CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
+
+    CREATE TABLE IF NOT EXISTS announcements (
+      id TEXT PRIMARY KEY,
+      type TEXT NOT NULL CHECK (type IN ('image', 'text', 'video')),
+      name TEXT NOT NULL,
+      content TEXT,
+      filePath TEXT,
+      formatting TEXT DEFAULT '{}',
+      createdAt TEXT NOT NULL,
+      updatedAt TEXT NOT NULL
+    );
   `)
 
   // Migration: add defaultBackground column to songs if missing
@@ -251,4 +273,44 @@ export function reorderScheduleItems(scheduleId: string, itemIds: string[]): voi
 export function clearScheduleItems(scheduleId: string): void {
   if (!db) return
   db.prepare('DELETE FROM schedule_items WHERE scheduleId = ?').run(scheduleId)
+}
+
+// ============ ANNOUNCEMENTS ============
+
+export function getAllAnnouncements(): Announcement[] {
+  if (!db) return []
+  return db.prepare('SELECT * FROM announcements ORDER BY updatedAt DESC').all() as Announcement[]
+}
+
+export function getAnnouncementsByType(type: string): Announcement[] {
+  if (!db) return []
+  return db.prepare('SELECT * FROM announcements WHERE type = ? ORDER BY updatedAt DESC').all(type) as Announcement[]
+}
+
+export function createAnnouncement(announcement: Announcement): Announcement {
+  if (!db) throw new Error('Database not initialized')
+  const stmt = db.prepare(`
+    INSERT INTO announcements (id, type, name, content, filePath, formatting, createdAt, updatedAt)
+    VALUES (@id, @type, @name, @content, @filePath, @formatting, @createdAt, @updatedAt)
+  `)
+  stmt.run(announcement)
+  return announcement
+}
+
+export function updateAnnouncement(id: string, updates: Partial<Announcement>): Announcement | undefined {
+  if (!db) return undefined
+  const existing = db.prepare('SELECT * FROM announcements WHERE id = ?').get(id) as Announcement | undefined
+  if (!existing) return undefined
+  const updated = { ...existing, ...updates, updatedAt: new Date().toISOString() }
+  db.prepare(`
+    UPDATE announcements
+    SET type = @type, name = @name, content = @content, filePath = @filePath, formatting = @formatting, updatedAt = @updatedAt
+    WHERE id = @id
+  `).run(updated)
+  return updated
+}
+
+export function deleteAnnouncement(id: string): boolean {
+  if (!db) return false
+  return db.prepare('DELETE FROM announcements WHERE id = ?').run(id).changes > 0
 }

@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect } from 'react'
 import { usePresentationStore } from '../stores/presentationStore'
 
 // Types for announcements
-interface LowerThirdItem {
+interface ImageItem {
   id: string
   name: string
   imagePath: string
@@ -13,6 +13,7 @@ interface TextAnnouncement {
   name: string
   content: string
   backgroundImage: string | null
+  displayMode: 'lower-third' | 'full-screen'
   formatting: {
     bold?: boolean
     italic?: boolean
@@ -23,13 +24,13 @@ interface TextAnnouncement {
   }
 }
 
-interface FullScreenItem {
+interface VideoItem {
   id: string
   name: string
   imagePath: string
 }
 
-type TabType = 'lower-third' | 'text' | 'full-screen'
+type TabType = 'images' | 'text' | 'videos'
 
 export default function Announcements() {
   const {
@@ -41,14 +42,14 @@ export default function Announcements() {
   } = usePresentationStore()
 
   // State
-  const [activeTab, setActiveTab] = useState<TabType>('lower-third')
-  const [lowerThirds, setLowerThirds] = useState<LowerThirdItem[]>([])
+  const [activeTab, setActiveTab] = useState<TabType>('images')
+  const [imageItems, setImageItems] = useState<ImageItem[]>([])
   const [textAnnouncements, setTextAnnouncements] = useState<TextAnnouncement[]>([])
-  const [fullScreenItems, setFullScreenItems] = useState<FullScreenItem[]>([])
+  const [videoItems, setVideoItems] = useState<VideoItem[]>([])
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [previewContent, setPreviewContent] = useState<{
-    type: 'lower-third' | 'text' | 'full-screen'
-    data: LowerThirdItem | TextAnnouncement | FullScreenItem
+    type: TabType
+    data: ImageItem | TextAnnouncement | VideoItem
   } | null>(null)
   const [liveContent, setLiveContent] = useState<typeof previewContent>(null)
   const [toast, setToast] = useState<string | null>(null)
@@ -60,6 +61,7 @@ export default function Announcements() {
     name: '',
     content: '',
     backgroundImage: null as string | null,
+    displayMode: 'full-screen' as 'lower-third' | 'full-screen',
     formatting: {
       bold: false,
       italic: false,
@@ -74,31 +76,81 @@ export default function Announcements() {
   const [showBgPicker, setShowBgPicker] = useState(false)
 
   // File input refs
-  const lowerThirdInputRef = useRef<HTMLInputElement>(null)
-  const fullScreenInputRef = useRef<HTMLInputElement>(null)
+  const imageInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
   const textBgInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { loadBackgrounds() }, [])
+
+  // Load announcements from DB on mount
+  useEffect(() => {
+    async function loadFromDb() {
+      if (!window.electronAPI?.announcements) return
+      const all = await window.electronAPI.announcements.getAll()
+      const images: ImageItem[] = []
+      const texts: TextAnnouncement[] = []
+      const videos: VideoItem[] = []
+      for (const row of all) {
+        if (row.type === 'image') {
+          images.push({ id: row.id, name: row.name, imagePath: row.filePath || '' })
+        } else if (row.type === 'text') {
+          const fmt = JSON.parse(row.formatting || '{}')
+          texts.push({
+            id: row.id,
+            name: row.name,
+            content: row.content || '',
+            backgroundImage: row.filePath || null,
+            displayMode: fmt.displayMode || 'full-screen',
+            formatting: {
+              bold: fmt.bold ?? false,
+              italic: fmt.italic ?? false,
+              underline: fmt.underline ?? false,
+              fontSize: fmt.fontSize ?? 48,
+              textAlign: fmt.textAlign ?? 'center',
+              textColor: fmt.textColor ?? '#ffffff',
+            }
+          })
+        } else if (row.type === 'video') {
+          videos.push({ id: row.id, name: row.name, imagePath: row.filePath || '' })
+        }
+      }
+      setImageItems(images)
+      setTextAnnouncements(texts)
+      setVideoItems(videos)
+    }
+    loadFromDb()
+  }, [])
 
   const showToast = useCallback((message: string) => {
     setToast(message)
     setTimeout(() => setToast(null), 3000)
   }, [])
 
+  // Helper to save announcement to DB
+  const saveToDb = async (type: 'image' | 'text' | 'video', id: string, name: string, content: string | null, filePath: string | null, formatting: Record<string, unknown> = {}) => {
+    if (!window.electronAPI?.announcements) return
+    const now = new Date().toISOString()
+    await window.electronAPI.announcements.create({
+      id, type, name, content, filePath,
+      formatting: JSON.stringify(formatting),
+      createdAt: now, updatedAt: now,
+    })
+  }
+
   // Import handlers
-  const handleImportLowerThird = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportImages = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
-    
+
     for (const file of Array.from(files)) {
       const id = crypto.randomUUID()
       const name = file.name.replace(/\.[^/.]+$/, '')
-      
-      // Convert file to data URL for preview (in production, save to app data)
+
       const reader = new FileReader()
-      reader.onload = () => {
+      reader.onload = async () => {
         const imagePath = reader.result as string
-        setLowerThirds(prev => [...prev, { id, name, imagePath }])
+        setImageItems(prev => [...prev, { id, name, imagePath }])
+        await saveToDb('image', id, name, null, imagePath)
         showToast(`Imported "${name}"`)
       }
       reader.readAsDataURL(file)
@@ -106,18 +158,19 @@ export default function Announcements() {
     e.target.value = ''
   }
 
-  const handleImportFullScreen = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportVideos = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
-    
+
     for (const file of Array.from(files)) {
       const id = crypto.randomUUID()
       const name = file.name.replace(/\.[^/.]+$/, '')
-      
+
       const reader = new FileReader()
-      reader.onload = () => {
+      reader.onload = async () => {
         const imagePath = reader.result as string
-        setFullScreenItems(prev => [...prev, { id, name, imagePath }])
+        setVideoItems(prev => [...prev, { id, name, imagePath }])
+        await saveToDb('video', id, name, null, imagePath)
         showToast(`Imported "${name}"`)
       }
       reader.readAsDataURL(file)
@@ -144,6 +197,7 @@ export default function Announcements() {
       name: '',
       content: '',
       backgroundImage: null,
+      displayMode: 'full-screen',
       formatting: {
         bold: false,
         italic: false,
@@ -162,6 +216,7 @@ export default function Announcements() {
       name: item.name,
       content: item.content,
       backgroundImage: item.backgroundImage,
+      displayMode: item.displayMode || 'full-screen',
       formatting: {
         bold: item.formatting.bold ?? false,
         italic: item.formatting.italic ?? false,
@@ -174,42 +229,53 @@ export default function Announcements() {
     setShowTextDialog(true)
   }
 
-  const handleSaveTextAnnouncement = () => {
+  const handleSaveTextAnnouncement = async () => {
     if (!textForm.name.trim() || !textForm.content.trim()) {
       showToast('Please enter a name and content')
       return
     }
 
+    const formatting = { ...textForm.formatting, displayMode: textForm.displayMode }
+
     if (editingText) {
-      setTextAnnouncements(prev => prev.map(item => 
-        item.id === editingText.id 
-          ? { ...item, ...textForm }
-          : item
+      const updated = { ...editingText, ...textForm }
+      setTextAnnouncements(prev => prev.map(item =>
+        item.id === editingText.id ? updated : item
       ))
+      if (window.electronAPI?.announcements) {
+        await window.electronAPI.announcements.update(editingText.id, {
+          name: textForm.name,
+          content: textForm.content,
+          filePath: textForm.backgroundImage,
+          formatting: JSON.stringify(formatting),
+        })
+      }
       showToast('Announcement updated')
     } else {
-      const newItem: TextAnnouncement = {
-        id: crypto.randomUUID(),
-        ...textForm
-      }
+      const id = crypto.randomUUID()
+      const newItem: TextAnnouncement = { id, ...textForm }
       setTextAnnouncements(prev => [...prev, newItem])
+      await saveToDb('text', id, textForm.name, textForm.content, textForm.backgroundImage, formatting)
       showToast('Announcement created')
     }
     setShowTextDialog(false)
   }
 
   // Delete handlers
-  const handleDeleteItem = (type: TabType, id: string) => {
-    if (type === 'lower-third') {
-      setLowerThirds(prev => prev.filter(item => item.id !== id))
+  const handleDeleteItem = async (type: TabType, id: string) => {
+    if (type === 'images') {
+      setImageItems(prev => prev.filter(item => item.id !== id))
     } else if (type === 'text') {
       setTextAnnouncements(prev => prev.filter(item => item.id !== id))
     } else {
-      setFullScreenItems(prev => prev.filter(item => item.id !== id))
+      setVideoItems(prev => prev.filter(item => item.id !== id))
     }
     if (selectedItemId === id) {
       setSelectedItemId(null)
       setPreviewContent(null)
+    }
+    if (window.electronAPI?.announcements) {
+      await window.electronAPI.announcements.delete(id)
     }
     showToast('Item deleted')
   }
@@ -254,8 +320,8 @@ export default function Announcements() {
 
   const updateNdiOutput = (content: NonNullable<typeof previewContent>) => {
     // Update NDI/presentation output based on content type
-    if (content.type === 'lower-third') {
-      const item = content.data as LowerThirdItem
+    if (content.type === 'images') {
+      const item = content.data as ImageItem
       setCurrentSlide({
         text: '',
         sectionType: 'announcement',
@@ -264,17 +330,18 @@ export default function Announcements() {
       })
     } else if (content.type === 'text') {
       const item = content.data as TextAnnouncement
+      const isLowerThird = item.displayMode === 'lower-third'
       setCurrentSlide({
         text: item.content,
         sectionType: 'announcement',
-        textPosition: 'center',
-        fontSize: `${item.formatting.fontSize}px`,
+        textPosition: isLowerThird ? 'lower-third' : 'center',
+        fontSize: `${isLowerThird ? Math.min(item.formatting.fontSize || 48, 32) : item.formatting.fontSize}px`,
         textColor: item.formatting.textColor,
         fontWeight: item.formatting.bold ? 700 : 400,
         backgroundImage: item.backgroundImage || undefined,
       })
-    } else if (content.type === 'full-screen') {
-      const item = content.data as FullScreenItem
+    } else if (content.type === 'videos') {
+      const item = content.data as VideoItem
       setCurrentSlide({
         text: '',
         sectionType: 'announcement',
@@ -291,12 +358,12 @@ export default function Announcements() {
   // Get items for current tab
   const getCurrentItems = () => {
     switch (activeTab) {
-      case 'lower-third':
-        return lowerThirds
+      case 'images':
+        return imageItems
       case 'text':
         return textAnnouncements
-      case 'full-screen':
-        return fullScreenItems
+      case 'videos':
+        return videoItems
     }
   }
 
@@ -310,8 +377,8 @@ export default function Announcements() {
       )
     }
 
-    if (content.type === 'lower-third' || content.type === 'full-screen') {
-      const item = content.data as LowerThirdItem | FullScreenItem
+    if (content.type === 'images' || content.type === 'videos') {
+      const item = content.data as ImageItem | VideoItem
       return (
         <img
           src={item.imagePath}
@@ -438,7 +505,7 @@ export default function Announcements() {
             display: 'flex',
             borderBottom: '1px solid rgba(255,255,255,0.08)',
           }}>
-            {(['lower-third', 'text', 'full-screen'] as TabType[]).map((tab) => (
+            {(['images', 'text', 'videos'] as TabType[]).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -455,7 +522,7 @@ export default function Announcements() {
                   textTransform: 'capitalize',
                 }}
               >
-                {tab.replace('-', ' ')}
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
               </button>
             ))}
           </div>
@@ -464,18 +531,18 @@ export default function Announcements() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {/* Action buttons */}
             <div style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              {activeTab === 'lower-third' && (
+              {activeTab === 'images' && (
                 <>
                   <input
-                    ref={lowerThirdInputRef}
+                    ref={imageInputRef}
                     type="file"
                     accept="image/*"
                     multiple
-                    onChange={handleImportLowerThird}
+                    onChange={handleImportImages}
                     style={{ display: 'none' }}
                   />
                   <button
-                    onClick={() => lowerThirdInputRef.current?.click()}
+                    onClick={() => imageInputRef.current?.click()}
                     style={{
                       width: '100%',
                       padding: '10px 16px',
@@ -495,11 +562,11 @@ export default function Announcements() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                     </svg>
-                    Import Lower Third Images
+                    Import Images
                   </button>
                 </>
               )}
-              
+
               {activeTab === 'text' && (
                 <button
                   onClick={handleNewTextAnnouncement}
@@ -526,19 +593,19 @@ export default function Announcements() {
                   New Text Announcement
                 </button>
               )}
-              
-              {activeTab === 'full-screen' && (
+
+              {activeTab === 'videos' && (
                 <>
                   <input
-                    ref={fullScreenInputRef}
+                    ref={videoInputRef}
                     type="file"
-                    accept="image/*"
+                    accept="image/*,video/*"
                     multiple
-                    onChange={handleImportFullScreen}
+                    onChange={handleImportVideos}
                     style={{ display: 'none' }}
                   />
                   <button
-                    onClick={() => fullScreenInputRef.current?.click()}
+                    onClick={() => videoInputRef.current?.click()}
                     style={{
                       width: '100%',
                       padding: '10px 16px',
@@ -558,7 +625,7 @@ export default function Announcements() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                       <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12" />
                     </svg>
-                    Import Full Screen Images
+                    Import Videos
                   </button>
                 </>
               )}
@@ -568,9 +635,9 @@ export default function Announcements() {
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {getCurrentItems().length === 0 ? (
                 <div style={{ padding: '40px 20px', textAlign: 'center', color: '#a0aec0', fontSize: '13px' }}>
-                  {activeTab === 'lower-third' && 'Import lower third images to get started'}
+                  {activeTab === 'images' && 'Import images to get started'}
                   {activeTab === 'text' && 'Create text announcements to display'}
-                  {activeTab === 'full-screen' && 'Import full screen images (1920x1080)'}
+                  {activeTab === 'videos' && 'Import videos to get started'}
                 </div>
               ) : (
                 getCurrentItems().map((item) => (
@@ -607,7 +674,7 @@ export default function Announcements() {
                         </svg>
                       ) : (
                         <img
-                          src={(item as LowerThirdItem | FullScreenItem).imagePath}
+                          src={(item as ImageItem | VideoItem).imagePath}
                           alt={item.name}
                           style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                         />
@@ -863,6 +930,48 @@ export default function Announcements() {
                 />
               </div>
 
+              {/* Display Mode */}
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a0aec0', marginBottom: '8px' }}>
+                  Display Mode
+                </label>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {(['lower-third', 'full-screen'] as const).map((mode) => (
+                    <button
+                      key={mode}
+                      onClick={() => {
+                        setTextForm(prev => ({
+                          ...prev,
+                          displayMode: mode,
+                          formatting: {
+                            ...prev.formatting,
+                            fontSize: mode === 'lower-third' ? Math.min(prev.formatting.fontSize, 32) : prev.formatting.fontSize < 32 ? 48 : prev.formatting.fontSize,
+                          }
+                        }))
+                      }}
+                      style={{
+                        flex: 1,
+                        padding: '10px 16px',
+                        borderRadius: '8px',
+                        backgroundColor: textForm.displayMode === mode ? 'rgba(233,69,96,0.2)' : 'rgba(255,255,255,0.05)',
+                        color: textForm.displayMode === mode ? '#e94560' : '#a0aec0',
+                        border: textForm.displayMode === mode ? '1px solid #e94560' : '1px solid rgba(255,255,255,0.1)',
+                        cursor: 'pointer',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                      }}
+                    >
+                      {mode === 'lower-third' ? 'Lower Third' : 'Full Screen'}
+                    </button>
+                  ))}
+                </div>
+                <div style={{ fontSize: '11px', color: 'rgba(160,174,192,0.5)', marginTop: '6px' }}>
+                  {textForm.displayMode === 'lower-third'
+                    ? 'Text appears in the bottom third of the screen (1920x360)'
+                    : 'Text covers the full screen (1920x1080)'}
+                </div>
+              </div>
+
               {/* WYSIWYG Toolbar */}
               <div style={{ marginBottom: '12px' }}>
                 <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, color: '#a0aec0', marginBottom: '8px' }}>
@@ -1115,7 +1224,7 @@ export default function Announcements() {
                 </label>
                 <div style={{
                   width: '100%',
-                  aspectRatio: '16/9',
+                  aspectRatio: textForm.displayMode === 'lower-third' ? '16/3' : '16/9',
                   borderRadius: '10px',
                   overflow: 'hidden',
                   border: '1px solid rgba(255,255,255,0.1)',
@@ -1124,9 +1233,9 @@ export default function Announcements() {
                   backgroundSize: 'cover',
                   backgroundPosition: 'center',
                   display: 'flex',
-                  alignItems: 'center',
+                  alignItems: textForm.displayMode === 'lower-third' ? 'flex-end' : 'center',
                   justifyContent: 'center',
-                  padding: '16px',
+                  padding: textForm.displayMode === 'lower-third' ? '8px 16px' : '16px',
                 }}>
                   <p style={{
                     color: textForm.formatting.textColor,

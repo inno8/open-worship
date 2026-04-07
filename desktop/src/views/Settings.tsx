@@ -12,7 +12,8 @@ interface DisplayInfo {
   size: { width: number; height: number }
 }
 
-const APP_VERSION = '1.0.7'
+// @ts-ignore - vite injects this from package.json
+const APP_VERSION = __APP_VERSION__ || '1.0.0'
 
 const BACKGROUND_PRESETS = [
   '#000000',
@@ -53,6 +54,8 @@ export default function Settings() {
     shadowOffsetY,
     shadowColor,
     lowerThirdOpacity,
+    textBorderWidth,
+    textBorderColor,
     setDisplayId,
     setTextPosition,
     setShadowBlur,
@@ -60,6 +63,8 @@ export default function Settings() {
     setShadowOffsetY,
     setShadowColor,
     setLowerThirdOpacity,
+    setTextBorderWidth,
+    setTextBorderColor,
     setFontSize,
     setFontFamily,
     setFontWeight,
@@ -885,6 +890,48 @@ export default function Settings() {
                 </div>
               </div>
 
+              {/* Text Border */}
+              <div>
+                <label style={labelStyle}>Text Border Width: {textBorderWidth}px</label>
+                <input
+                  type="range"
+                  min="0"
+                  max="10"
+                  step="1"
+                  value={textBorderWidth}
+                  onChange={(e) => setTextBorderWidth(Number(e.target.value))}
+                  style={{ width: '100%', accentColor: '#e94560' }}
+                />
+              </div>
+              {textBorderWidth > 0 && (
+                <div>
+                  <label style={labelStyle}>Text Border Color</label>
+                  <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+                    <input
+                      type="color"
+                      value={textBorderColor}
+                      onChange={(e) => setTextBorderColor(e.target.value)}
+                      style={{ width: '40px', height: '32px', border: 'none', borderRadius: '6px', cursor: 'pointer', backgroundColor: 'transparent' }}
+                    />
+                    <input
+                      type="text"
+                      value={textBorderColor}
+                      onChange={(e) => setTextBorderColor(e.target.value)}
+                      style={{
+                        flex: 1,
+                        padding: '6px 10px',
+                        borderRadius: '6px',
+                        border: '1px solid rgba(255,255,255,0.1)',
+                        backgroundColor: 'rgba(255,255,255,0.05)',
+                        color: '#ffffff',
+                        fontSize: '13px',
+                        outline: 'none',
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {/* Lower Third Opacity - only show when lower-third mode is selected */}
               {textPosition === 'lower-third' && (
                 <div>
@@ -930,6 +977,8 @@ export default function Settings() {
                 fontWeight,
                 fontSize: `${fontSizeSliderVal / 3}px`,
                 textShadow: `${shadowOffsetX}px ${shadowOffsetY}px ${shadowBlur}px ${shadowColor}`,
+                WebkitTextStroke: textBorderWidth > 0 ? `${textBorderWidth}px ${textBorderColor}` : undefined,
+                paintOrder: textBorderWidth > 0 ? 'stroke fill' : undefined,
               }}>
                 Preview Text
               </div>

@@ -277,6 +277,27 @@ function ensureBackgroundsDir() {
   }
 }
 
+// ============ ANNOUNCEMENTS ============
+ipcMain.handle('announcements:getAll', () => {
+  return db.getAllAnnouncements()
+})
+
+ipcMain.handle('announcements:getByType', (_event, type: string) => {
+  return db.getAnnouncementsByType(type)
+})
+
+ipcMain.handle('announcements:create', (_event, announcement: db.Announcement) => {
+  return db.createAnnouncement(announcement)
+})
+
+ipcMain.handle('announcements:update', (_event, id: string, updates: Partial<db.Announcement>) => {
+  return db.updateAnnouncement(id, updates)
+})
+
+ipcMain.handle('announcements:delete', (_event, id: string) => {
+  return db.deleteAnnouncement(id)
+})
+
 ipcMain.handle('backgrounds:list', () => {
   ensureBackgroundsDir()
   return fs.readdirSync(backgroundsDir).filter(f => /\.(jpg|jpeg|png|webp)$/i.test(f))
