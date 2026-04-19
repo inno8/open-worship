@@ -853,25 +853,25 @@ export default function Presenter() {
                         <rect x="3" y="4" width="18" height="18" rx="2" />
                         <path d="M16 2v4M8 2v4M3 10h18" />
                       </svg>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ 
-                          fontSize: '13px', 
+                      <div style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: '8px', overflow: 'hidden' }}>
+                        <span style={{
+                          fontSize: '13px',
                           color: '#ffffff',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
                         }}>
                           {schedule.name}
-                        </div>
+                        </span>
                         {schedule.date && (
-                          <div style={{ fontSize: '11px', color: '#a0aec0' }}>
-                            {new Date(schedule.date + 'T00:00:00').toLocaleDateString('en-US', { 
-                              weekday: 'short', 
-                              month: 'short', 
+                          <span style={{ fontSize: '11px', color: '#a0aec0', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                            {new Date(schedule.date + 'T00:00:00').toLocaleDateString('en-US', {
+                              weekday: 'short',
+                              month: 'short',
                               day: 'numeric',
                               year: schedule.date.slice(0, 4) !== new Date().getFullYear().toString() ? 'numeric' : undefined
                             })}
-                          </div>
+                          </span>
                         )}
                       </div>
                       <span style={{ fontSize: '11px', color: '#a0aec0' }}>

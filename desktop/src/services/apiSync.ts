@@ -38,6 +38,19 @@ export interface ApiSchedule {
   name?: string
   title?: string // Some APIs use title instead of name
   date?: string
+  // Alternate date field names different APIs use
+  service_date?: string
+  serviceDate?: string
+  start_date?: string
+  startDate?: string
+  schedule_date?: string
+  scheduleDate?: string
+  scheduled_date?: string
+  scheduledDate?: string
+  scheduled_at?: string
+  scheduledAt?: string
+  event_date?: string
+  eventDate?: string
   notes?: string
   items?: ApiScheduleItem[]
   entries?: ApiScheduleItem[] // Some APIs use "entries" instead of "items"
@@ -361,10 +374,21 @@ export function apiScheduleToLocal(apiSchedule: ApiSchedule): Schedule {
     }))
   }
   
+  // Try common date field names
+  const rawDate = apiSchedule.date
+    || apiSchedule.service_date || apiSchedule.serviceDate
+    || apiSchedule.start_date || apiSchedule.startDate
+    || apiSchedule.schedule_date || apiSchedule.scheduleDate
+    || apiSchedule.scheduled_date || apiSchedule.scheduledDate
+    || apiSchedule.scheduled_at || apiSchedule.scheduledAt
+    || apiSchedule.event_date || apiSchedule.eventDate
+  // Normalize to YYYY-MM-DD (the toLocaleDateString path expects this format)
+  const normalizedDate = rawDate ? rawDate.slice(0, 10) : undefined
+
   return {
     id: apiSchedule.id,
     name: apiSchedule.name || apiSchedule.title || 'Untitled Schedule',
-    date: apiSchedule.date,
+    date: normalizedDate,
     notes: apiSchedule.notes || '',
     items: scheduleItems.map((item, index) => ({
       id: item.id || crypto.randomUUID(),
